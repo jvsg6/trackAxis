@@ -21,10 +21,12 @@ directory = 'res_100'
 
 srcPosLon = 33.5403694792
 srcPosLat = 36.1449943051
+#Вводим точность для углов
 dphi = 0.5
 axePoints = []
 
 def findOrCreate(curDir):
+	nameDphi = str("dphi_%s.dat" % (str(dphi).replace('.','')))
 	print "voshel"
 	global axePoints
 	phiMin = 0.0
@@ -35,11 +37,11 @@ def findOrCreate(curDir):
 		lst.append(filename)
 	find = False
 	for namefile in lst:
-		if namefile == 'dphi.dat':
+		if namefile == nameDphi:
 			find = True
 	if find:
-		print "voshel"
-		f=open("dphi.dat", 'r')
+		print "find"
+		f=open(nameDphi, 'r')
 		string = f.read() 
 		lst = string.split("\n")
 		axePoints= [[[0.0 , 0.0]]*length for i in range(len(axeRadius))]
@@ -49,16 +51,21 @@ def findOrCreate(curDir):
 				#print k
 				axePoints[i][j][0] = float(lst[k].split(" ")[0])
 				axePoints[i][j][1] = float(lst[k].split(" ")[1])
+				#print float(lst[k].split(" ")[0])
+				#print float(lst[k].split(" ")[1])
 				k = k + 1
-				#print axePoints[i][j]
+				
+		#print axePoints
 			
 	else:
+		print "not find"
 		phiMin = 0.0
 		phiMax = 360.0
 		length = int((phiMax-phiMin)/dphi+1)
 		axePoints= [[[0.0 , 0.0]]*length for i in range(len(axeRadius))]
-		a = open("dphi.dat", 'wt')
+		a = open(nameDphi, 'wt')
 		for i, r in enumerate(axeRadius):
+			
 			r1 = r*1000.0
 			phi = phiMin
 			for j in range(len(axePoints[i])):
@@ -74,6 +81,7 @@ def findOrCreate(curDir):
 				a.write(str(axePoints[i][j][1]))
 				a.write('\n')
 				phi = phi+dphi
+				
 		a.close()
 	return
 def angleOf(dX,dY):
@@ -118,7 +126,6 @@ class GeoGrid:
 		self.fmax   = 0.0
 		
 		self.data   = []
-		self.dataLatLon = []
 		
 		string = f.read() 
 		lst = string.split("\n")
@@ -212,7 +219,6 @@ class GeoGrid:
 		res = []
 		phiMin = 0.0
 		phiMax = 360.0
-		
 		#print self.getValue(srcPosLon,srcPosLat)
 		#r = 1000.0
 		for i, r in enumerate(rVals):
@@ -224,6 +230,7 @@ class GeoGrid:
 			while phi <= phiMax:
 				#print i
 				#print j
+				
 				tmp = self.getValue(axePoints[i][j][0],axePoints[i][j][1])
 				if(fv<tmp):
 					fv = tmp
@@ -249,24 +256,27 @@ def main():
 		return
 	curDir = str(sys.argv[1])
 	findOrCreate(curDir)
+	#print axePoints
 	global axeMaxPoints
 	lst = []
-	lst.extend(axeRadius)
-	
-	try:
-                et = open(str(sys.argv[1])+"SI/f0.grd", 'r')
-        except IOError:
-                print ("No such file")
-	fil = GeoGrid(et)
-	
-	axeMaxPoints = fil.getPlumeAxisPoints(axeRadius)
-	os.chdir(directory)
-	f = open(str(curDir)+"maxPoint2_new.dat", 'wt')
-	for i in range(len(lst)-4):
-			
-		f.write(str(axeMaxPoints[i]).replace('[','').replace(']',''))
-		f.write('\r\n')
-	f.close()
+	for filename in os.listdir(str(curDir+"/SI/")):
+		lst.append(filename)
+		print str(sys.argv[1])+"SI/"+str(filename)
+		try:
+	                et = open(str(sys.argv[1])+"SI/"+str(filename), 'r')
+	        except IOError:
+	                print ("No such file")
+		fil = GeoGrid(et)
+		
+		axeMaxPoints = fil.getPlumeAxisPoints(axeRadius)
+		os.chdir(directory)
+		f = open(str(curDir)+"/res_100/"+"maxPoint_%s.dat" % (filename.split(".")[0]), 'wt')
+		for i in range(len(axeRadius)-4):	
+			f.write(str(axeMaxPoints[i]).replace('[','').replace(']',''))
+			f.write('\r\n')
+		f.close()
+		os.chdir(curDir)
+	print "dphi_%s.dat" % (str(dphi).replace('.',''))
 	return
 
 if __name__ == "__main__":
