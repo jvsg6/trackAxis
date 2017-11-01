@@ -19,7 +19,7 @@ axeRadius = [0.0,0.2,0.4,0.6,0.8,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,12.0,1
 axeMaxPoints = []
 pathToSI="/home/egor/Programs/stat/delete/SI/"
 pathToAxis="/home/egor/Programs/stat/delete/Axis/"
-pathToDphi="/home/egor/Programs/stat/delete/dphi_05.dat"
+pathToDphi="/home/egor/Programs/stat/delete/123/dphi_05.dat"
 srcPosLon = 33.5403694792
 srcPosLat = 36.1449943051
 #Вводим точность для углов
@@ -34,28 +34,35 @@ def findOrCreate(curDir):
 	phiMax = 360.0
 	length = int((phiMax-phiMin)/dphi+1)
 
-	if os.path.isfile(pathToDphi):
-		print "find"
-		f=open(nameDphi, 'rt')
-		string = f.read()
-		f.close()
-		lst2 = string.split("\n")
-		axePoints= [[] for i in range(len(axeRadius))]
-		for i in range(len(axeRadius)):
-			axePoints[i].extend([[0.0,0.0] for i in range(length)])
-		k = 0
-		for i, r in enumerate(axeRadius):
-			for j in range(len(axePoints[i])):
-				#print float(lst2[k].split(" ")[0]),float(lst2[k].split(" ")[1]),i ,j,len(axeRadius),len(axePoints[i])
-				axePoints[i][j][0] = float(lst2[k].split(" ")[0])
-				axePoints[i][j][1] = float(lst2[k].split(" ")[1])
-				#axePoints[i][j] = [i,j]
-				#axePoints[i][j][1] = j
-				#print axePoints[i][j][0], axePoints[i][j][1]
-				
-				#print axePoints[i][j][0]
-				#print axePoints[i][j][1]
-				k = k + 1
+	if os.path.isfile(pathToDphi) or os.path.isfile(str(curDir+"/"+nameDphi)) :
+			print "find"
+			try:
+				f = open(pathToDphi, 'rt')
+			except IOError :
+				try:
+					f = open(nameDphi, 'rt')
+				except IOError :
+					print("Error")
+
+			string = f.read()
+			f.close()
+			lst2 = string.split("\n")
+			axePoints= [[] for i in range(len(axeRadius))]
+			for i in range(len(axeRadius)):
+				axePoints[i].extend([[0.0,0.0] for i in range(length)])
+			k = 0
+			for i, r in enumerate(axeRadius):
+				for j in range(len(axePoints[i])):
+					#print float(lst2[k].split(" ")[0]),float(lst2[k].split(" ")[1]),i ,j,len(axeRadius),len(axePoints[i])
+					axePoints[i][j][0] = float(lst2[k].split(" ")[0])
+					axePoints[i][j][1] = float(lst2[k].split(" ")[1])
+					#axePoints[i][j] = [i,j]
+					#axePoints[i][j][1] = j
+					#print axePoints[i][j][0], axePoints[i][j][1]
+
+					#print axePoints[i][j][0]
+					#print axePoints[i][j][1]
+					k = k + 1
 
 		#print axePoints[2]
 			
@@ -70,14 +77,14 @@ def findOrCreate(curDir):
 			axePoints[i].extend([[0.0,0.0] for i in range(length)])
 		a = open(nameDphi, 'wt')
 		for i, r in enumerate(axeRadius):
-			
+
 			r1 = r*1000.0
 			phi = phiMin
 			for j in range(len(axePoints[i])):
 				dx = r1*cos(radians(phi))
 				dy = -r1*sin(radians(phi))
 				azimut = angleOf(dx,dy)
-				g = geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(azimut)-90.0), r1) 
+				g = geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(azimut)-90.0), r1)
 				axePoints[i][j][0] = g['lon2']
 				axePoints[i][j][1] = g['lat2']
 				#print str(axePoints[i][j])
@@ -86,7 +93,7 @@ def findOrCreate(curDir):
 				a.write(str(axePoints[i][j][1]))
 				a.write('\n')
 				phi = phi+dphi
-				
+
 		a.close()
 	return
 def angleOf(dX,dY):
@@ -260,11 +267,6 @@ def main():
 	mypath = os.path.dirname(os.path.realpath(__file__))
 	os.chdir(mypath)
 	curDir = str(mypath)
-	s=0
-	for i in axeRadius:
-		s = s + 2*3.14*i*1000
-	print 1
-	print s/50
 	findOrCreate(curDir)
 	#print axePoints
 	global axeMaxPoints
