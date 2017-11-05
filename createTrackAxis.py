@@ -17,15 +17,25 @@ axeRadius = [0.0,0.2,0.4,0.6,0.8,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,12.0,1
 			82.0,84.0,86.0,88.0,90.0,92.0,94.0,96.0,98.0,100.0]
 
 axeMaxPoints = []
-pathToSI="/home/egor/Programs/stat/delete/SI/"
-pathToAxis="/home/egor/Programs/stat/delete/Axis/"
-pathToDphi="/home/egor/Programs/stat/delete/123/dphi_05.dat"
+pathToSI="/home/egor/work/GRD/"
+pathToAxis="/home/egor/work/Axis/"
+pathToDphi="/home/egor/work/dphi_05.dat"
 srcPosLon = 33.5403694792
 srcPosLat = 36.1449943051
 #Вводим точность для углов
 dphi = 0.5
 axePoints = []
-
+def rename(lst):
+	
+	for i in range(len(lst)):
+		num=int(lst[i].replace('f','').split(".")[0])
+		if num<10:
+			lst[i]=str("f00"+str(num)+".grd")
+		if num<100 and num>9:
+			lst[i]=str("f0"+str(num)+".grd")
+		
+	print lst
+	return
 def findOrCreate(curDir):
 	nameDphi = str("dphi_%s.dat" % (str(dphi).replace('.','')))
 	print "voshel"
@@ -34,35 +44,28 @@ def findOrCreate(curDir):
 	phiMax = 360.0
 	length = int((phiMax-phiMin)/dphi+1)
 
-	if os.path.isfile(pathToDphi) or os.path.isfile(str(curDir+"/"+nameDphi)) :
-			print "find"
-			try:
-				f = open(pathToDphi, 'rt')
-			except IOError :
-				try:
-					f = open(nameDphi, 'rt')
-				except IOError :
-					print("Error")
-
-			string = f.read()
-			f.close()
-			lst2 = string.split("\n")
-			axePoints= [[] for i in range(len(axeRadius))]
-			for i in range(len(axeRadius)):
-				axePoints[i].extend([[0.0,0.0] for i in range(length)])
-			k = 0
-			for i, r in enumerate(axeRadius):
-				for j in range(len(axePoints[i])):
-					#print float(lst2[k].split(" ")[0]),float(lst2[k].split(" ")[1]),i ,j,len(axeRadius),len(axePoints[i])
-					axePoints[i][j][0] = float(lst2[k].split(" ")[0])
-					axePoints[i][j][1] = float(lst2[k].split(" ")[1])
-					#axePoints[i][j] = [i,j]
-					#axePoints[i][j][1] = j
-					#print axePoints[i][j][0], axePoints[i][j][1]
-
-					#print axePoints[i][j][0]
-					#print axePoints[i][j][1]
-					k = k + 1
+	if os.path.isfile(pathToDphi):
+		print "find"
+		f=open(nameDphi, 'rt')
+		string = f.read()
+		f.close()
+		lst2 = string.split("\n")
+		axePoints= [[] for i in range(len(axeRadius))]
+		for i in range(len(axeRadius)):
+			axePoints[i].extend([[0.0,0.0] for i in range(length)])
+		k = 0
+		for i, r in enumerate(axeRadius):
+			for j in range(len(axePoints[i])):
+				#print float(lst2[k].split(" ")[0]),float(lst2[k].split(" ")[1]),i ,j,len(axeRadius),len(axePoints[i])
+				axePoints[i][j][0] = float(lst2[k].split(" ")[0])
+				axePoints[i][j][1] = float(lst2[k].split(" ")[1])
+				#axePoints[i][j] = [i,j]
+				#axePoints[i][j][1] = j
+				#print axePoints[i][j][0], axePoints[i][j][1]
+				
+				#print axePoints[i][j][0]
+				#print axePoints[i][j][1]
+				k = k + 1
 
 		#print axePoints[2]
 			
@@ -77,14 +80,14 @@ def findOrCreate(curDir):
 			axePoints[i].extend([[0.0,0.0] for i in range(length)])
 		a = open(nameDphi, 'wt')
 		for i, r in enumerate(axeRadius):
-
+			
 			r1 = r*1000.0
 			phi = phiMin
 			for j in range(len(axePoints[i])):
 				dx = r1*cos(radians(phi))
 				dy = -r1*sin(radians(phi))
 				azimut = angleOf(dx,dy)
-				g = geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(azimut)-90.0), r1)
+				g = geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(azimut)-90.0), r1) 
 				axePoints[i][j][0] = g['lon2']
 				axePoints[i][j][1] = g['lat2']
 				#print str(axePoints[i][j])
@@ -93,7 +96,7 @@ def findOrCreate(curDir):
 				a.write(str(axePoints[i][j][1]))
 				a.write('\n')
 				phi = phi+dphi
-
+				
 		a.close()
 	return
 def angleOf(dX,dY):
@@ -271,6 +274,7 @@ def main():
 	#print axePoints
 	global axeMaxPoints
 	lst = []
+	lst.sort()
 	for filename in os.listdir(str(pathToSI)):
 		lst.append(filename)
 		try:
@@ -280,12 +284,16 @@ def main():
 		fil = GeoGrid(et)
 		
 		axeMaxPoints = fil.getPlumeAxisPoints(axeRadius)
-			
-		f = open(str(pathToTI)+"/"+"maxPoint_%s.dat" % (filename.split(".")[0]), 'wt')
+		try:
+			filename.split(".")[0].split("_")[1]=="max"
+			continue
+		except:
+			f = open(str(pathToAxis)+"/"+"maxPoint_%s.dat" % (filename.split(".")[0]), 'wt')
 		for i in range(len(axeRadius)-4):	
 			f.write(str(axeMaxPoints[i]).replace('[','').replace(']',''))
 			f.write('\r\n')
 		f.close()
+		print filename
 
 	print "dphi_%s.dat" % (str(dphi).replace('.',''))
 	return
