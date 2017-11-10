@@ -16,8 +16,8 @@ pathToPointsA="/home/egor/quest/Ru_106/A/Axis/maxPoint_f0.dat"
 pathToPointsB="/home/egor/quest/Ru_106/B/Axis/maxPoint_f0.dat"
 pathToPointsC="/home/egor/quest/Ru_106/C/Axis/maxPoint_f0.dat"
 pathToPointsD="/home/egor/quest/Ru_106/D/Axis/maxPoint_f0.dat"
-#pathToPointsE="/home/egor/quest/Ru_106/E/Axis/maxPoint_f0.dat"
-#pathToPointsF="/home/egor/quest/Ru_106/F/Axis/maxPoint_f0.dat"
+pathToPointsE="/home/egor/quest/Ru_106/E/Axis/maxPoint_f0.dat"
+pathToPointsF="/home/egor/quest/Ru_106/F/Axis/maxPoint_f0.dat"
 #pathToPointsG="/home/egor/quest/Ru_106/G/Axis/maxPoint_f0.dat"
 def save(name='', fmt='png'):
     pwd = os.getcwd()
@@ -29,11 +29,14 @@ def save(name='', fmt='png'):
     os.chdir(pwd)
     #plt.close()
 
-def main():
+def graph (path):
+	global x
+	global y
+	global fig
 	lst=[]
 	x=np.array(axeRadius)
 	#print(x)
-	f=open(pathToPoints, 'rt')
+	f=open(path, 'rt')
 	string = f.read()
 	f.close()
 	lst = string.split("\n")
@@ -43,19 +46,33 @@ def main():
 		#print float(lst[i].split(" ")[3])
 		lst2[i] = float(lst[i].split(" ")[3])
 	y=np.array(lst2)
+	
+	
+	return x, y
+
+def main():
+	global x
+	global y
+	global fig
+	
+	#graph(pathToPointsA)
 	#print lst2
 	#print y
 	fig = plt.figure()   # Создание объекта Figure
 	#plt.title('1a TITLE')
 	plt.ylabel('Lg(TIC)')
-	plt.xlabel('Distance(m)')
-	print np.max(y)    #Максимальное значение в массиве
+	plt.xlabel('Distance(km)')
+	#print np.max(y)    #Максимальное значение в массиве
 	print (fig.axes)   # Список текущих областей рисования пуст
 	print (type(fig))   # тип объекта Figure
-	plt.plot(x, np.log(y))   # scatter - метод для нанесения маркера в точке (1.0, 1.0)
 	plt.grid(True)     #Добавление сетки
-	# После нанесения графического элемента в виде маркера
-	# список текущих областей состоит из одной области
+	
+	plt.plot(graph(pathToPointsA)[0], np.log(graph(pathToPointsA)[1]), 
+	         graph(pathToPointsB)[0], np.log(graph(pathToPointsB)[1]),
+		 graph(pathToPointsC)[0], np.log(graph(pathToPointsC)[1]),
+		 graph(pathToPointsD)[0], np.log(graph(pathToPointsD)[1]),
+		 graph(pathToPointsE)[0], np.log(graph(pathToPointsE)[1]),
+		 graph(pathToPointsF)[0], np.log(graph(pathToPointsF)[1])) 
 	print (fig.axes)
 
 	# смотри преамбулу
