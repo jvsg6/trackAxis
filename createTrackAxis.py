@@ -18,7 +18,7 @@ axeRadius = [0.0,0.2,0.4,0.6,0.8,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,12.0,1
 
 axeMaxPoints = []
 pathToSI="/home/egor/work/GRD/"
-pathToAxis="/home/egor/work/Axis/"
+pathToAxis="/home/egor/work/Axis3/"
 pathToDphi="/home/egor/work/dphi_05.dat"
 srcPosLon = 33.5403694792
 srcPosLat = 36.1449943051
@@ -44,9 +44,15 @@ def findOrCreate(curDir):
 	phiMax = 360.0
 	length = int((phiMax-phiMin)/dphi+1)
 
-	if os.path.isfile(pathToDphi):
+	if os.path.isfile(pathToDphi) or os.path.isfile(str(curDir+"/"+nameDphi)) :
 		print "find"
-		f=open(nameDphi, 'rt')
+		try:
+			f = open(pathToDphi, 'rt')
+		except IOError:
+			try:
+				f = open(nameDphi, 'rt')
+			except IOError :
+				print("Error")
 		string = f.read()
 		f.close()
 		lst2 = string.split("\n")
@@ -270,11 +276,14 @@ def main():
 	mypath = os.path.dirname(os.path.realpath(__file__))
 	os.chdir(mypath)
 	curDir = str(mypath)
+	if os.path.isdir(pathToAxis)==False:
+		os.mkdir(pathToAxis)
 	findOrCreate(curDir)
 	#print axePoints
 	global axeMaxPoints
 	lst = []
 	lst.sort()
+	n=0.0
 	for filename in os.listdir(str(pathToSI)):
 		lst.append(filename)
 		try:
@@ -291,9 +300,12 @@ def main():
 			f = open(str(pathToAxis)+"/"+"maxPoint_%s.dat" % (filename.split(".")[0]), 'wt')
 		for i in range(len(axeRadius)-4):	
 			f.write(str(axeMaxPoints[i]).replace('[','').replace(']',''))
+			f.write(str(", "+str(axeRadius[i])+", "+str(fil.getValue(axeMaxPoints[i][0],axeMaxPoints[i][1]))))
 			f.write('\r\n')
 		f.close()
 		print filename
+		n=n+1.0
+		print str(n/206.0*100.0)+" % done"
 
 	print "dphi_%s.dat" % (str(dphi).replace('.',''))
 	return
