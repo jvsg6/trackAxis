@@ -4,7 +4,8 @@ import sys
 import os
 
 from math import cos,sin,radians,sqrt,fabs,acos,pi,degrees,floor
-
+import openpyxl
+from openpyxl import load_workbook
 import xml.etree.ElementTree
 from geographiclib.geodesic import Geodesic
 from geopy.distance import VincentyDistance
@@ -30,11 +31,11 @@ def angleOf1(dX,dY):
 	if (dX >  0 and dY < 0):
 		dFi  = 2.0*pi - dFi;
 	return dFi;
-
+tab = 2
 coordinates = [[[geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(angleOf1(r1*1000.0*cos(radians(float(phi)/10.0)),-r1*1000.0*sin(radians(float(phi)/10.0))))-90.0), r1*1000.0)['lon2'],\
                  geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(angleOf1(r1*1000.0*cos(radians(float(phi)/10.0)),-r1*1000.0*sin(radians(float(phi)/10.0))))-90.0), r1*1000.0)['lat2']] for phi in range(0,3600)] for r1 in axeRadius]
 
-print coordinates
+#print coordinates
 			
 def find_element_in_list(element,list_element):
         try:
@@ -233,7 +234,7 @@ class GeoGrid:
 		phiMin = 0.0
 		phiMax = 360.0
 		dphi = 0.1
-		print self.getValue(srcPosLon,srcPosLat)
+		#print self.getValue(srcPosLon,srcPosLat)
 		#r = 1000.0
 		for r in rVals:
 			r1 = r*1000.0
@@ -265,7 +266,7 @@ class GeoGrid:
 		phiMin = 0.0
 		phiMax = 360.0
 		dphi = 0.001
-		print self.getValue(srcPosLon,srcPosLat)
+		#print self.getValue(srcPosLon,srcPosLat)
 		#r = 1000.0
 		for r in rVals:
 			point = [0.0,0.0]
@@ -295,7 +296,7 @@ class GeoGrid:
 	def getPlumeAxisPoints2(self, coordinates):
 		res = []
 
-		print self.getValue(srcPosLon,srcPosLat)
+		#print self.getValue(srcPosLon,srcPosLat)
 		#r = 1000.0
 		for phiArr in coordinates:
 			point = [0.0,0.0]
@@ -317,6 +318,42 @@ class GeoGrid:
 			tmp = self.getValue(r[0],r[1])
 			res.append(tmp)
 		return res
+def compare(ww, name, mypath):
+	lstcompare = []	#список имен функционалов
+	lst2compare=[]	# Создаем список сортировки
+	for j in range(206):
+		lstcompare.append(ww.cell(row=1, column=j+2).value)
+	print len(lstcompare)
+	for i in range(2, len(lstcompare)+2): #+2 потому что так построен входной файл, цикл по строкам
+		find=False
+		if len(lst2compare)>0 and i<208:
+			for k in range(len(lst2compare)):
+				if lst2compare[k].count(lstcompare[i-2])!=0:
+					find=True
+		if find==True:
+			continue
+		lst2compare.append([])
+		lst2compare[len(lst2compare)-1].append(lstcompare[i-2])
+		for j in range(2, len(lstcompare)+2): #+2 потому что так построен входной файл, цикл по столбцам
+			if i==j:
+				continue
+			if int(ww.cell(row=i, column=j).value)==1:
+				#print "sovpalo"
+				lst2compare[len(lst2compare)-1].append(lstcompare[j-2]) #Добавляем элемент в список, если он отсутствует
+				
+			#else:
+				#print  ws.cell(row=i, column=j).value
+
+	f = open(mypath+"/CompareAll/"+name+str(".txt"), 'wt')
+	f.write(str(len(lst2compare)) + '\n')
+	for i in range(len(lst2compare)):
+		print lst2compare[i]
+		
+		f.write(str(lst2compare[i]) + '\r\n')
+	print len(lst2compare)
+
+	f.close()
+	return
 
 def eqArr(arr1,arr2):
 	if len(arr1) != len(arr2):
@@ -341,13 +378,16 @@ def main():
 	#if(len(sys.argv)==1):
 	#	return
 	
-	global axePoints
+	global axePoints, name
 	lst = ["calcFunctionId","tipObl","isotop","phchForm","organ","age","timeEnd"]
 	lst.extend(axeRadius)
 	alltime = 366*24*3600/7200
-	for i in range(alltime+1):
-		path = str("/home/egor/Programs/stat/VVER_TOI_scenario_3/results/"+str(i*7200)+" s/out.xml")
+	for ii in range(alltime+1):
+		path = str("/home/egor/work/results/"+str(ii*7200)+" s/out.xml")
 		print path 
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Сравнение осей следа'
 		et = xml.etree.ElementTree.parse(str(path))
 		root = et.getroot()
 		grid = root.find('grid')
@@ -357,6 +397,8 @@ def main():
 		totArray = []
 		totArrayNonEq = []
 		for gridFunctionId, gridFunction in enumerate(grid.findall('gridFunction')):
+			ws.cell(row=1, column=gridFunctionId + 2, value="f"+str(gridFunctionId))
+			ws.cell(row=gridFunctionId+2, column=1, value="f"+str(gridFunctionId))
 			print str(gridFunctionId)+"/"+str(len(grid.findall('gridFunction')))
 			fil = GeoGrid(gridFunction)
 			axePoints = fil.getPlumeAxisPoints2(coordinates)
@@ -364,16 +406,30 @@ def main():
 			del fil
 			find = False
 		
-			for arr in totArrayNonEq:
+			for k, arr in enumerate(totArray):
+				
 				if eqArr(arr, axePoints):
 					find = True
-					break
+					ws.cell(row=gridFunctionId + 2, column=k + 2, value=str("1"))
+					ws.cell(row=k + 2, column=gridFunctionId + 2, value=str("1"))   #симметрично заполняем таблицу относительно диагонали
+
+				else:
+					ws.cell(row=gridFunctionId + 2, column=k + 2, value=str("0"))
+					ws.cell(row=k+2, column=gridFunctionId+2, value=str("0"))   #симметрично заполняем таблицу относительно диагонали
+				if k==gridFunctionId:
+					ws.cell(row=k+2, column=k+2, value=str("//////////////"))
+				
 			if find == False:
 				numbers.append(gridFunctionId)
 				totArrayNonEq.append(axePoints) 
-		
-	
-		f = open(mypath+"/axe.dat", 'wt')
+		compare(ws, str(ii*7200), mypath)
+		if os.path.isdir('AxisAll')==False:
+			os.mkdir('AxisAll')
+		if os.path.isdir('CompareAll')==False:
+			os.mkdir('CompareAll')
+		name=str(mypath + "/CompareAll/Compare_"+str(ii*7200)+".xlsx")
+		wb.save(name)
+		f = open(mypath+"/AxisAll/axe_"+str(ii*7200)+".dat", 'wt')
 		for i in range(len(totArray)):
 			f.write(str(i)+';'+str(i)+';')
 		f.write('\r\n')
@@ -386,18 +442,21 @@ def main():
 			f.write('\r\n')
 		f.close()	
 		
-		f1 = open(mypath+"/axe_NE.dat", 'wt')
+		f1 = open(mypath+"/AxisAll/axe_"+str(ii*7200)+"_NE.dat", 'wt')
 		for i in range(len(totArrayNonEq)):
 			f1.write(str(numbers[i])+';'+str(i)+';')
 		f1.write('\r\n')
 		for i in range(len(totArrayNonEq)):
 			f1.write('lon;lat;')
-		f1.write('\r\n')
-		for i in range(len(totArrayNonEq[0])):
-			for j in range(len(totArrayNonEq)):
-				f1.write('%0.12f' % totArrayNonEq[j][i][0] + ';'+'%0.12f' % totArrayNonEq[j][i][1]+ ';')
-			f1.write('\r\n')
-		f1.close()
+		#f1.write('\r\n')
+		#for i in range(len(totArrayNonEq[0])):
+		#	for j in range(len(totArrayNonEq)):
+		#		f1.write('%0.12f' % totArrayNonEq[j][i][0] + ';'+'%0.12f' % totArrayNonEq[j][i][1]+ ';')
+		#	f1.write('\r\n')
+		#f1.close()
+		print str("            ")+str(ii*7200)+str(" s   done")
+		#break
+		
 	
 	print "done!!!!!"
 	return
