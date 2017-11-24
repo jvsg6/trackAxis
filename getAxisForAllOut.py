@@ -32,6 +32,7 @@ def angleOf1(dX,dY):
 		dFi  = 2.0*pi - dFi;
 	return dFi;
 tab = 2
+n=0
 coordinates = [[[geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(angleOf1(r1*1000.0*cos(radians(float(phi)/10.0)),-r1*1000.0*sin(radians(float(phi)/10.0))))-90.0), r1*1000.0)['lon2'],\
                  geod.Direct(srcPosLat, srcPosLon, 360.0-(degrees(angleOf1(r1*1000.0*cos(radians(float(phi)/10.0)),-r1*1000.0*sin(radians(float(phi)/10.0))))-90.0), r1*1000.0)['lat2']] for phi in range(0,3600)] for r1 in axeRadius]
 
@@ -318,7 +319,12 @@ class GeoGrid:
 			tmp = self.getValue(r[0],r[1])
 			res.append(tmp)
 		return res
-def compare(ww, name, mypath):
+def compare(ww, name, mypath):		
+	wbcomp = openpyxl.Workbook()
+	wscomp = wbcomp.worksheets[0]
+	wscomp.title = u'Сравнение осей следа'
+	if os.path.isdir('CompareAll')==False:
+		os.mkdir('CompareAll')
 	lstcompare = []	#список имен функционалов
 	lst2compare=[]	# Создаем список сортировки
 	for j in range(206):
@@ -337,25 +343,26 @@ def compare(ww, name, mypath):
 		for j in range(2, len(lstcompare)+2): #+2 потому что так построен входной файл, цикл по столбцам
 			if i==j:
 				continue
-			if int(ww.cell(row=i, column=j).value)==1:
+			if int(ww.cell(row=i, column=j).value)==40:
 				#print "sovpalo"
 				lst2compare[len(lst2compare)-1].append(lstcompare[j-2]) #Добавляем элемент в список, если он отсутствует
 				
 			#else:
 				#print  ws.cell(row=i, column=j).value
-
-	f = open(mypath+"/CompareAll/"+name+str(".txt"), 'wt')
-	f.write(str(len(lst2compare)) + '\n')
+	wscomp.cell(row=1, column=1, value=str("Name func"))
+	wscomp.cell(row=1, column=1, value=str("Number of Axis"))
+	wscomp.cell(row=2, column=1, value=str(name))
+	wscomp.cell(row=2, column=2, value=str(len(lst2compare)))
 	for i in range(len(lst2compare)):
-		print lst2compare[i]
-		
-		f.write(str(lst2compare[i]) + '\r\n')
+		for j in range(len(lst2compare[i])):
+			wscomp.cell(row=j + 3, column=i + 1, value=str(lst2compare[i][j]))
 	print len(lst2compare)
-
-	f.close()
+	wbcomp.save(mypath+"/CompareAll/Axis_"+name+".xlsx")
 	return
 
 def eqArr(arr1,arr2):
+	global n
+	n=0
 	if len(arr1) != len(arr2):
 		return False
 	
@@ -370,6 +377,8 @@ def eqArr(arr1,arr2):
 		if g['s12']>float(tol):
 		#if abs(arr1[i][0] - arr2[i][0]) > 1.0e-4 or abs(arr1[i][1] - arr2[i][1]) > 1.0e-4:
 			return False
+		else:
+			n=n+1
 	
 	return True
 def main():
@@ -378,12 +387,12 @@ def main():
 	#if(len(sys.argv)==1):
 	#	return
 	
-	global axePoints, name
+	global axePoints, name, n
 	lst = ["calcFunctionId","tipObl","isotop","phchForm","organ","age","timeEnd"]
 	lst.extend(axeRadius)
 	alltime = 366*24*3600/7200
 	for ii in range(alltime+1):
-		path = str("/home/egor/work/results/"+str(ii*7200)+" s/out.xml")
+		path = str("/home/egor/Programs/stat/VVER_TOI_scenario_3/results/"+str(ii*7200)+" s/out.xml")
 		print path 
 		wb = openpyxl.Workbook()
 		ws = wb.worksheets[0]
@@ -407,15 +416,16 @@ def main():
 			find = False
 		
 			for k, arr in enumerate(totArray):
-				
-				if eqArr(arr, axePoints):
-					find = True
-					ws.cell(row=gridFunctionId + 2, column=k + 2, value=str("1"))
-					ws.cell(row=k + 2, column=gridFunctionId + 2, value=str("1"))   #симметрично заполняем таблицу относительно диагонали
-
-				else:
-					ws.cell(row=gridFunctionId + 2, column=k + 2, value=str("0"))
-					ws.cell(row=k+2, column=gridFunctionId+2, value=str("0"))   #симметрично заполняем таблицу относительно диагонали
+				eqArr(arr, axePoints)
+				ws.cell(row=gridFunctionId + 2, column=k + 2, value=str(n))
+				ws.cell(row=k + 2, column=gridFunctionId + 2, value=str(n))   #симметрично заполняем таблицу относительно диагонали
+				#if n==40:
+				#	find = True
+				#	ws.cell(row=gridFunctionId + 2, column=k + 2, value=str("1"))
+				#	ws.cell(row=k + 2, column=gridFunctionId + 2, value=str("1"))   #симметрично заполняем таблицу относительно диагонали
+				#else:
+				#	ws.cell(row=gridFunctionId + 2, column=k + 2, value=str("0"))
+				#	ws.cell(row=k+2, column=gridFunctionId+2, value=str("0"))   #симметрично заполняем таблицу относительно диагонали
 				if k==gridFunctionId:
 					ws.cell(row=k+2, column=k+2, value=str("//////////////"))
 				
@@ -425,8 +435,7 @@ def main():
 		compare(ws, str(ii*7200), mypath)
 		if os.path.isdir('AxisAll')==False:
 			os.mkdir('AxisAll')
-		if os.path.isdir('CompareAll')==False:
-			os.mkdir('CompareAll')
+
 		name=str(mypath + "/CompareAll/Compare_"+str(ii*7200)+".xlsx")
 		wb.save(name)
 		f = open(mypath+"/AxisAll/axe_"+str(ii*7200)+".dat", 'wt')
