@@ -19,7 +19,7 @@ import matplotlib.ticker as ticker
 from matplotlib import cm
 import numpy as np
 
-pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results/7200 s/"
+pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results/"
 def find_element_in_list(element,list_element):
         try:
 		index_element=list_element.index(element)
@@ -226,35 +226,51 @@ class GeoGrid:
 		if (dX >  0 and dY < 0):
 			dFi  = 2.0*pi - dFi;
 		return dFi;
+def save(name='', fmt='png'):
+    pwd = os.getcwd()
+    plt.title(name)
+    pathToFolder=pwd+"/pictures/"
 
+    if os.path.isdir(pathToFolder)==False:
+		os.mkdir(pathToFolder)
+    iPath = './pictures/{}'.format(fmt)
+    if not os.path.exists(iPath):
+        os.mkdir(iPath)
+    os.chdir(iPath)
+    plt.savefig('{}.{}'.format(name, fmt), fmt='png')
+    os.chdir(pwd)
+    plt.close()
+    return
 
 
 
 def main():
-
-	path = pathToOut+"/"+"out.xml"
-	source = open(path, 'rb')
-	et = xml.etree.ElementTree.parse(path)
-	root = et.getroot()
-	grid = root.find('grid')
-	for gridFunction in grid.findall('gridFunction'):
-		fil = GeoGrid(gridFunction)
-		if int(gridFunction.get("calcFunctionId").strip()) == 2:
-			#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
-			resArray = np.array(fil.grap)
-			resArray.shape = (101, 101)
-			resArray = np.transpose(resArray)
-			#img = mpimg.imread('./ground.png')
-			#img.thumbnail((101, 101))
-			#imgplot = plt.imshow(img)
-			plt.imshow(resArray, cmap='Spectral', alpha = 0.8)
-			plt.colorbar()
-			plt.show()
-			plt.clf()
-			plt.cla()
-			plt.close()
-			break
-		del fil
+	alltime = 366*24*3600/7200
+	for ii in range(alltime+1):
+		path = pathToOut+"/"+str(ii*7200)+" s/"+"out.xml"
+		source = open(path, 'rb')
+		et = xml.etree.ElementTree.parse(path)
+		root = et.getroot()
+		grid = root.find('grid')
+		for gridFunction in grid.findall('gridFunction'):
+			fil = GeoGrid(gridFunction)
+			if int(gridFunction.get("calcFunctionId").strip()) == 2:
+				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
+				resArray = np.array(fil.grap)
+				resArray.shape = (101, 101)
+				resArray = np.transpose(resArray)
+				#img = mpimg.imread('./ground.png')
+				#img.thumbnail((101, 101))
+				#imgplot = plt.imshow(img)
+				plt.imshow(resArray, cmap='Spectral', alpha = 1)
+				save(str(ii*7200))
+				plt.show()
+			
+				plt.clf()
+				plt.cla()
+				plt.close()
+				break
+			del fil
 
 	return 
 
