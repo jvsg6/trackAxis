@@ -7,11 +7,11 @@ from math import cos,sin,radians,sqrt,fabs,acos,pi,degrees,floor,log10
 from datetime import datetime
 
 import xml.etree.ElementTree
-
+import matplotlib.image as mpimg
 import struct
-
+from PIL import Image
 import matplotlib as mpl
-#mpl.use('Agg')
+
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
@@ -19,7 +19,7 @@ import matplotlib.ticker as ticker
 from matplotlib import cm
 import numpy as np
 
-pathToOut="/home/egor/work/results/0 s/"
+pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results/7200 s/"
 def find_element_in_list(element,list_element):
         try:
 		index_element=list_element.index(element)
@@ -244,7 +244,11 @@ def main():
 			resArray = np.array(fil.grap)
 			resArray.shape = (101, 101)
 			resArray = np.transpose(resArray)
-			plt.matshow(resArray, cmap=plt.cm.hot)
+			#img = mpimg.imread('./ground.png')
+			#img.thumbnail((101, 101))
+			#imgplot = plt.imshow(img)
+			plt.imshow(resArray, cmap='Spectral', alpha = 0.8)
+			plt.colorbar()
 			plt.show()
 			plt.clf()
 			plt.cla()
