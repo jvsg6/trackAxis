@@ -228,7 +228,7 @@ class GeoGrid:
 		return dFi;
 def save(name='', fmt='png'):
     pwd = os.getcwd()
-    plt.title(name)
+    plt.title(str("day "+str(int(float(name)*2.0/24.0))+"  time  "+str(int(name)*7200)+"  s"))
     pathToFolder=pwd+"/pictures/"
 
     if os.path.isdir(pathToFolder)==False:
@@ -237,7 +237,9 @@ def save(name='', fmt='png'):
     if not os.path.exists(iPath):
         os.mkdir(iPath)
     os.chdir(iPath)
-    plt.savefig('{}.{}'.format(name, fmt), fmt='png')
+    nul = 8-len(name)
+    
+    plt.savefig('{:0>8s}.{}'.format(name, fmt), fmt='png')
     os.chdir(pwd)
     plt.close()
     return
@@ -245,8 +247,10 @@ def save(name='', fmt='png'):
 
 
 def main():
+	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
 	for ii in range(alltime+1):
+		sumArray=np.array([[0.0]*101]*101)
 		path = pathToOut+"/"+str(ii*7200)+" s/"+"out.xml"
 		source = open(path, 'rb')
 		et = xml.etree.ElementTree.parse(path)
@@ -254,16 +258,14 @@ def main():
 		grid = root.find('grid')
 		for gridFunction in grid.findall('gridFunction'):
 			fil = GeoGrid(gridFunction)
-			if int(gridFunction.get("calcFunctionId").strip()) == 2:
+			if int(gridFunction.get("calcFunctionId").strip()) == 134 or int(gridFunction.get("calcFunctionId").strip()) == 135or int(gridFunction.get("calcFunctionId").strip()) == 141:
 				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
 				resArray = np.array(fil.grap)
 				resArray.shape = (101, 101)
 				resArray = np.transpose(resArray)
-				#img = mpimg.imread('./ground.png')
-				#img.thumbnail((101, 101))
-				#imgplot = plt.imshow(img)
-				plt.imshow(resArray, cmap='Spectral', alpha = 1)
-				save(str(ii*7200))
+				sumArray=sumArray + resArray
+				plt.imshow(sumArray, cmap='Spectral', alpha = 1)
+				save(str(ii))
 				plt.show()
 			
 				plt.clf()
