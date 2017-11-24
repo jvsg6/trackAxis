@@ -250,6 +250,7 @@ def main():
 	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
 	for ii in range(alltime+1):
+		print "     "+str(ii)
 		sumArray=np.array([[0.0]*101]*101)
 		path = pathToOut+"/"+str(ii*7200)+" s/"+"out.xml"
 		source = open(path, 'rb')
@@ -258,8 +259,10 @@ def main():
 		grid = root.find('grid')
 		for gridFunction in grid.findall('gridFunction'):
 			fil = GeoGrid(gridFunction)
-			if int(gridFunction.get("calcFunctionId").strip()) == 134 or int(gridFunction.get("calcFunctionId").strip()) == 135or int(gridFunction.get("calcFunctionId").strip()) == 141:
+			#if (int(gridFunction.get("calcFunctionId").strip()) == 134) or (int(gridFunction.get("calcFunctionId").strip()) == 135) or (int(gridFunction.get("calcFunctionId").strip()) == 141):
+			if (int(gridFunction.get("calcFunctionId").strip()) == 2):
 				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
+				print int(gridFunction.get("calcFunctionId").strip())
 				resArray = np.array(fil.grap)
 				resArray.shape = (101, 101)
 				resArray = np.transpose(resArray)
@@ -271,7 +274,8 @@ def main():
 				plt.clf()
 				plt.cla()
 				plt.close()
-				break
+			else:
+				continue
 			del fil
 
 	return 
