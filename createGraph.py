@@ -4,22 +4,20 @@ import sys
 import os
 
 from math import cos,sin,radians,sqrt,fabs,acos,pi,degrees,floor,log10
-from datetime import datetime
-
-import xml.etree.ElementTree
-import matplotlib.image as mpimg
-import struct
 from PIL import Image
+import xml.etree.ElementTree
 import matplotlib as mpl
-
-from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
-import matplotlib.ticker as ticker
-from matplotlib import cm
+
+
+
+
+
+
 import numpy as np
 
-pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results/"
+pathToOut="/home/egor/work/results"
 def find_element_in_list(element,list_element):
         try:
 		index_element=list_element.index(element)
@@ -239,7 +237,7 @@ def save(name='', fmt='png'):
     os.chdir(iPath)
     nul = 8-len(name)
     
-    plt.savefig('{:0>8s}.{}'.format(name, fmt), fmt='png')
+    plt.savefig('{:0>8s}.{}'.format(name, fmt), fmt='png', pad_inches=0.1, dpi=300)
     os.chdir(pwd)
     plt.close()
     return
@@ -250,33 +248,51 @@ def main():
 	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
 	for ii in range(alltime+1):
-		print "     "+str(ii)
+		fig = plt.figure()
+		maxx=0.0
+		print ii*7200
 		sumArray=np.array([[0.0]*101]*101)
+		resArray=np.array([[0.0]*101]*101)
 		path = pathToOut+"/"+str(ii*7200)+" s/"+"out.xml"
 		source = open(path, 'rb')
 		et = xml.etree.ElementTree.parse(path)
 		root = et.getroot()
 		grid = root.find('grid')
-		for gridFunction in grid.findall('gridFunction'):
+		for gridFunctionID, gridFunction in enumerate(grid.findall('gridFunction')):
 			fil = GeoGrid(gridFunction)
-			#if (int(gridFunction.get("calcFunctionId").strip()) == 134) or (int(gridFunction.get("calcFunctionId").strip()) == 135) or (int(gridFunction.get("calcFunctionId").strip()) == 141):
-			if (int(gridFunction.get("calcFunctionId").strip()) == 2):
+			#print gridFunctionID
+			if (gridFunctionID == 134) or (gridFunctionID == 135) or (gridFunctionID == 141):
+				print gridFunctionID
 				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
-				print int(gridFunction.get("calcFunctionId").strip())
+				
 				resArray = np.array(fil.grap)
-				resArray.shape = (101, 101)
+				#print len(fil.grap), len(resArray), len(resArray[0])
 				resArray = np.transpose(resArray)
 				sumArray=sumArray + resArray
-				plt.imshow(sumArray, cmap='Spectral', alpha = 1)
-				save(str(ii))
-				plt.show()
-			
-				plt.clf()
-				plt.cla()
-				plt.close()
-			else:
-				continue
+
 			del fil
+		maxx=np.max(sumArray)
+		newmaxx=maxx*0.1
+		for i in range(len(sumArray)):
+			for j in range(len(sumArray[i])):
+				if float(sumArray[i][j])>newmaxx:
+					sumArray[i][j]=newmaxx
+		#img=mpimg.imread('ground.png')
+		#imgplot = plt.imshow(img)
+		img = Image.open('123.png')
+		img.thumbnail((125, 125), Image.ANTIALIAS)
+		imgplot = plt.imshow(img)
+		plt.imshow(sumArray, cmap='RdYlGn', alpha = 0.75, interpolation='bilinear')
+		#plt.colorbar()
+		plt.xticks(())
+		plt.yticks(())
+		save(str(ii))
+		plt.show()
+		plt.clf()
+		plt.cla()
+		plt.close()	
+			
+		
 
 	return 
 
