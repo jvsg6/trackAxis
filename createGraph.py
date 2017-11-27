@@ -2,22 +2,28 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
-
+from openpyxl import Workbook
 from math import cos,sin,radians,sqrt,fabs,acos,pi,degrees,floor,log10
 from PIL import Image
 import xml.etree.ElementTree
 import matplotlib as mpl
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
+import pylab
+from mpl_toolkits.mplot3d import Axes3D
+import datetime
+from matplotlib import rcParams
+mpl.rcParams['font.family'] = 'fantasy'
+mpl.rcParams['font.fantasy'] = 'Times New Roman', 'Ubuntu','Arial','Tahoma','Calibri'
 
-
-
-
+#1451606400
+import time
+print(time.gmtime(0))
 
 
 import numpy as np
 
-pathToOut="/home/egor/work/results"
+pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results"
 def find_element_in_list(element,list_element):
         try:
 		index_element=list_element.index(element)
@@ -129,7 +135,7 @@ class GeoGrid:
 			lin = readLineF(lst[j])
 			for i in range(len(lin)):
 				self.data[i*self.county+(self.county-j-1)] = lin[i]
-				self.grap[i][j]=lin[i]
+				self.grap[i][self.county-j-1]=lin[i]
 		
 		self.fmin   = self.findMin()
 		self.fmax   = self.findMax()
@@ -226,9 +232,11 @@ class GeoGrid:
 		return dFi;
 def save(name='', fmt='png'):
     pwd = os.getcwd()
-    plt.title(str("day "+str(int(float(name)*2.0/24.0))+"  time  "+str(int(name)*7200)+"  s"))
+   # print datetime.fromtimestamp(int(ii*7200))
+    global ii
+    #plt.title(str("day "+str(int(float(name)*2.0/24.0))+"  time  "+str(int(name)*7200)+"  s"))
     pathToFolder=pwd+"/pictures/"
-
+    #plt.title("u\'"+str(time.strftime('Day %d Month %m Year %Y  %H hours', time.localtime(1451595600+int(name)*7200)))+"\'")
     if os.path.isdir(pathToFolder)==False:
 		os.mkdir(pathToFolder)
     iPath = './pictures/{}'.format(fmt)
@@ -236,7 +244,6 @@ def save(name='', fmt='png'):
         os.mkdir(iPath)
     os.chdir(iPath)
     nul = 8-len(name)
-    
     plt.savefig('{:0>8s}.{}'.format(name, fmt), fmt='png', pad_inches=0.1, dpi=300)
     os.chdir(pwd)
     plt.close()
@@ -248,7 +255,7 @@ def main():
 	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
 	for ii in range(alltime+1):
-		fig = plt.figure()
+		
 		maxx=0.0
 		print ii*7200
 		sumArray=np.array([[0.0]*101]*101)
@@ -262,7 +269,7 @@ def main():
 			fil = GeoGrid(gridFunction)
 			#print gridFunctionID
 			if (gridFunctionID == 134) or (gridFunctionID == 135) or (gridFunctionID == 141):
-				print gridFunctionID
+				#print gridFunctionID
 				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
 				
 				resArray = np.array(fil.grap)
@@ -271,26 +278,51 @@ def main():
 				sumArray=sumArray + resArray
 
 			del fil
-		maxx=np.max(sumArray)
-		newmaxx=maxx*0.1
-		for i in range(len(sumArray)):
-			for j in range(len(sumArray[i])):
-				if float(sumArray[i][j])>newmaxx:
-					sumArray[i][j]=newmaxx
-		#img=mpimg.imread('ground.png')
-		#imgplot = plt.imshow(img)
-		img = Image.open('123.png')
-		img.thumbnail((125, 125), Image.ANTIALIAS)
-		imgplot = plt.imshow(img)
-		plt.imshow(sumArray, cmap='RdYlGn', alpha = 0.75, interpolation='bilinear')
-		#plt.colorbar()
-		plt.xticks(())
-		plt.yticks(())
+		#maxx=np.max(sumArray)
+		#newmaxx=maxx*0.1
+		#for i in range(len(sumArray)):
+		#	for j in range(len(sumArray[i])):
+		#		if float(sumArray[i][j])>newmaxx:
+		#			sumArray[i][j]=newmaxx
+		if ii==ii:
+			fig = plt.figure()
+			ax1 = fig.add_subplot(111)
+			img = Image.open('123.png')
+
+			ax1.imshow(img, extent=[0, 100, 0, 100])
+			x = np.arange (0,101, 1)
+			y = np.arange (0,101, 1)
+			xgrid, ygrid = np.meshgrid(x, y)
+
+			levels = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
+			c = ('#5342f4', '#41a0f4', '#41f48b', '#d9f441', '#f47f41', '#f44341','#f90200', '#000000')
+			contour = plt.contour(xgrid, ygrid, sumArray, levels, colors=c)
+			#plt.clabel(contour, colors = 'k', fmt = '%2.4f', fontsize=12)
+			#plt.clabel(contour, colors = 'k')
+			contour_filled = plt.contourf(xgrid, ygrid, sumArray, levels, colors=c, alpha=0.5)
+			#plt.colorbar(contour_filled)
+			plt.xlabel(u'x (км)')
+			plt.ylabel(u'y (км)')
+			ss=(u"Год ")+(time.strftime('%Y ', time.localtime(1451595600+int(ii)*7200)))+ (u"Месяц ")+(time.strftime('%m ', time.localtime(1451595600+int(ii)*7200)))+(u"День ")+(time.strftime('%d ', time.localtime(1451595600+int(ii)*7200)))+(u"Час ")+(time.strftime('%H ', time.localtime(1451595600+int(ii)*7200)))
+			plt.title(ss)
+    
+			xlabels = []
+			ylabels = []
+			xx = np.arange(-60, 80, 20)
+			txx = np.arange(0, 100, 16.6)
+			ax1.set_xticks(txx)
+			ax1.set_yticks(txx)
+			#print xx
+			for i in xx:
+				xlabels.append('%d' % i)
+				ylabels.append('%d' % i)
+			#print xlabels
+			ax1.set_xticklabels(xlabels)
+			ax1.set_yticklabels(ylabels)
+			
+
 		save(str(ii))
-		plt.show()
-		plt.clf()
-		plt.cla()
-		plt.close()	
+
 			
 		
 
