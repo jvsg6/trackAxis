@@ -1,5 +1,12 @@
 #!/usr/bin/python2.7
 # -*- coding: utf-8 -*-
+#Модуль для создания картинок в формате ".png" на основе out.xml файлов 
+#Запуск: 
+
+#1. Запускается данный модуль
+#Разработан: 27.11.2017 
+#Автор: Киселев А.А., Ильичев Е.А.
+#Последняя модификация: 27.11.2017 
 import sys
 import os
 from openpyxl import Workbook
@@ -15,15 +22,18 @@ import datetime
 from matplotlib import rcParams
 mpl.rcParams['font.family'] = 'fantasy'
 mpl.rcParams['font.fantasy'] = 'Times New Roman', 'Ubuntu','Arial','Tahoma','Calibri'
-
+from geographiclib.geodesic import Geodesic
+from geopy.distance import VincentyDistance
+geod = Geodesic.WGS84
 #1451606400
 import time
-print(time.gmtime(0))
-
+#print(time.gmtime(0))
+sourLon=37.618979
+sourLat=55.752641
 
 import numpy as np
 
-pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results"
+pathToOut="/home/egor/work"
 def find_element_in_list(element,list_element):
         try:
 		index_element=list_element.index(element)
@@ -136,10 +146,9 @@ class GeoGrid:
 			for i in range(len(lin)):
 				self.data[i*self.county+(self.county-j-1)] = lin[i]
 				self.grap[i][self.county-j-1]=lin[i]
-		
+		#print self.lonmin, self.lonmax
 		self.fmin   = self.findMin()
 		self.fmax   = self.findMax()
-
 		#self.printASCIIGRDFile("test.grd")
 	
 	def findMin(self):
@@ -258,17 +267,42 @@ def main():
 		
 		maxx=0.0
 		print ii*7200
-		sumArray=np.array([[0.0]*101]*101)
-		resArray=np.array([[0.0]*101]*101)
+
 		path = pathToOut+"/"+str(ii*7200)+" s/"+"out.xml"
 		source = open(path, 'rb')
 		et = xml.etree.ElementTree.parse(path)
 		root = et.getroot()
 		grid = root.find('grid')
 		for gridFunctionID, gridFunction in enumerate(grid.findall('gridFunction')):
+			if gridFunctionID==0:
+				fil = GeoGrid(gridFunction)
+				
+				countx=fil.countx
+				county=fil.county
+				
+				#g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmin, fil.lonmax)
+				#deltaX=g['s12']/1000.0
+				deltaX=countx
+				#g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmin, sourLon)
+				#deltaToSourX=g['s12']/1000.0
+				deltaToSourX=int((sourLon-fil.lonmin)/fil.dlon)
+				
+				
+				#g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmax, fil.lonmin)
+				#deltaY=g['s12']/1000.0
+				deltaY=county
+				
+				#g = geod.Inverse(fil.latmin, fil.lonmin, sourLat, fil.lonmin)
+				#deltaToSourY=g['s12']/1000.0
+				deltaToSourY=int((sourLat-fil.latmin)/fil.dlat)
+				print deltaX, deltaY
+				sumArray=np.array([[0.0]*fil.countx]*fil.county)
+				resArray=np.array([[0.0]*fil.countx]*fil.county)
+				del fil
 			fil = GeoGrid(gridFunction)
 			#print gridFunctionID
-			if (gridFunctionID == 134) or (gridFunctionID == 135) or (gridFunctionID == 141):
+			#if (gridFunctionID == 134) or (gridFunctionID == 135) or (gridFunctionID == 141):
+			if gridFunctionID==gridFunctionID:
 				#print gridFunctionID
 				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
 				
@@ -289,13 +323,14 @@ def main():
 			ax1 = fig.add_subplot(111)
 			img = Image.open('123.png')
 
-			ax1.imshow(img, extent=[0, 100, 0, 100])
-			x = np.arange (0,101, 1)
-			y = np.arange (0,101, 1)
+			ax1.imshow(img, extent=[0, countx, 0, county])
+			x = np.arange (0,countx, 1)
+			y = np.arange (0,county, 1)
+			print countx
 			xgrid, ygrid = np.meshgrid(x, y)
 
-			levels = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
-			c = ('#5342f4', '#41a0f4', '#41f48b', '#d9f441', '#f47f41', '#f44341','#f90200', '#000000')
+			levels = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0]
+			c = ('#5342f4', '#41a0f4', '#41f48b', '#d9f441', '#f47f41', '#f44341','#f90200', '#000000', '#5342f4')
 			contour = plt.contour(xgrid, ygrid, sumArray, levels, colors=c)
 			#plt.clabel(contour, colors = 'k', fmt = '%2.4f', fontsize=12)
 			#plt.clabel(contour, colors = 'k')
@@ -308,20 +343,41 @@ def main():
     
 			xlabels = []
 			ylabels = []
-			xx = np.arange(-60, 80, 20)
-			txx = np.arange(0, 100, 16.6)
+			aaa=-1*deltaToSourX
+			xx = np.arange(aaa, deltaX-deltaToSourX, 40)
+			
+			bbb=-1*deltaToSourY
+			yy = np.arange(bbb, deltaY-deltaToSourY, 40)
+			#txx = np.arange(0, deltaX, 16.6)
+			txx = np.linspace(0.0, deltaX, num=len(xx), endpoint=False)
+			
+			
+			tyy = np.linspace(0.0, deltaY, num=len(yy), endpoint=False)
+			#tyy = np.arange(0, deltaY, 16.6)
+			xx=np.append(xx, deltaX-deltaToSourX)
+			txx=np.append(txx, deltaX)
+			yy=np.append(yy, deltaY-deltaToSourY)
+			tyy=np.append(tyy, deltaY)
+			print xx, len(xx)
+			print txx, len(txx)
+			print yy, len(yy)
+			print tyy, len(tyy)
 			ax1.set_xticks(txx)
-			ax1.set_yticks(txx)
+			ax1.set_yticks(tyy)
 			#print xx
 			for i in xx:
 				xlabels.append('%d' % i)
+			for i in yy:
 				ylabels.append('%d' % i)
 			#print xlabels
 			ax1.set_xticklabels(xlabels)
 			ax1.set_yticklabels(ylabels)
-			
-
+		
+		plt.show()
 		save(str(ii))
+		
+		break
+	
 
 			
 		
