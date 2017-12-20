@@ -1,12 +1,5 @@
 #!/usr/bin/python2.7
 # -*- coding: utf-8 -*-
-#Модуль для создания картинок в формате ".png" на основе out.xml файлов 
-#Запуск: 
-
-#1. Запускается данный модуль
-#Разработан: 27.11.2017 
-#Автор: Киселев А.А., Ильичев Е.А.
-#Последняя модификация: 27.11.2017 
 import sys
 import os
 from openpyxl import Workbook
@@ -19,21 +12,22 @@ import matplotlib.pyplot as plt
 import pylab
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
-from matplotlib import rcParams
-mpl.rcParams['font.family'] = 'fantasy'
-mpl.rcParams['font.fantasy'] = 'Times New Roman', 'Ubuntu','Arial','Tahoma','Calibri'
 from geographiclib.geodesic import Geodesic
 from geopy.distance import VincentyDistance
 geod = Geodesic.WGS84
+from matplotlib import rcParams
+mpl.rcParams['font.family'] = 'fantasy'
+mpl.rcParams['font.fantasy'] = 'Times New Roman', 'Ubuntu','Arial','Tahoma','Calibri'
+srcPosLon = 33.5403694792
+srcPosLat = 36.1449943051
 #1451606400
 import time
-#print(time.gmtime(0))
-sourLon=37.618979
-sourLat=55.752641
 
+
+number=0
 import numpy as np
 
-pathToOut="/home/egor/work"
+pathToOut="/home/egor/Programs/stat/VVER_TOI_scenario_3/results"
 def find_element_in_list(element,list_element):
         try:
 		index_element=list_element.index(element)
@@ -146,9 +140,10 @@ class GeoGrid:
 			for i in range(len(lin)):
 				self.data[i*self.county+(self.county-j-1)] = lin[i]
 				self.grap[i][self.county-j-1]=lin[i]
-		#print self.lonmin, self.lonmax
+		
 		self.fmin   = self.findMin()
 		self.fmax   = self.findMax()
+
 		#self.printASCIIGRDFile("test.grd")
 	
 	def findMin(self):
@@ -240,145 +235,106 @@ class GeoGrid:
 			dFi  = 2.0*pi - dFi;
 		return dFi;
 def save(name='', fmt='png'):
-    pwd = os.getcwd()
-   # print datetime.fromtimestamp(int(ii*7200))
-    global ii
-    #plt.title(str("day "+str(int(float(name)*2.0/24.0))+"  time  "+str(int(name)*7200)+"  s"))
-    pathToFolder=pwd+"/pictures/"
-    #plt.title("u\'"+str(time.strftime('Day %d Month %m Year %Y  %H hours', time.localtime(1451595600+int(name)*7200)))+"\'")
-    if os.path.isdir(pathToFolder)==False:
-		os.mkdir(pathToFolder)
-    iPath = './pictures/{}'.format(fmt)
-    if not os.path.exists(iPath):
-        os.mkdir(iPath)
-    os.chdir(iPath)
-    nul = 8-len(name)
-    plt.savefig('{:0>8s}.{}'.format(name, fmt), fmt='png', pad_inches=0.1, dpi=300)
-    os.chdir(pwd)
-    plt.close()
-    return
+	global ii
+	global number
+	pwd = os.getcwd()
+	pathToFolder=pwd+"/picture_new/"
+	if os.path.isdir(pathToFolder)==False:
+		os.makedirs(pathToFolder)
+	iPath = './picture_new/{}'.format(fmt)
+	if not os.path.exists(iPath):
+		os.mkdir(iPath)
+	os.chdir(iPath)
+	nul = 8-len(name)
+	plt.savefig('{:0>8s}.{}'.format(str(number), fmt), fmt='png', pad_inches=0.1, dpi=300)
+	number+=1
+	os.chdir(pwd)
+	plt.close()
+	return
 
 
 
 def main():
 	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
-	for ii in range(alltime+1):
-		
+	for ii in range(0, alltime+1, 12):
 		maxx=0.0
 		print ii*7200
-
+		a=True
+		#path="/home/egor/quest/Ru_106/A/out.xml"
 		path = pathToOut+"/"+str(ii*7200)+" s/"+"out.xml"
 		source = open(path, 'rb')
 		et = xml.etree.ElementTree.parse(path)
 		root = et.getroot()
 		grid = root.find('grid')
 		for gridFunctionID, gridFunction in enumerate(grid.findall('gridFunction')):
-			if gridFunctionID==0:
-				fil = GeoGrid(gridFunction)
-				
-				countx=fil.countx
-				county=fil.county
-				
-				#g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmin, fil.lonmax)
-				#deltaX=g['s12']/1000.0
-				deltaX=countx
-				#g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmin, sourLon)
-				#deltaToSourX=g['s12']/1000.0
-				deltaToSourX=int((sourLon-fil.lonmin)/fil.dlon)
-				
-				
-				#g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmax, fil.lonmin)
-				#deltaY=g['s12']/1000.0
-				deltaY=county
-				
-				#g = geod.Inverse(fil.latmin, fil.lonmin, sourLat, fil.lonmin)
-				#deltaToSourY=g['s12']/1000.0
-				deltaToSourY=int((sourLat-fil.latmin)/fil.dlat)
-				print deltaX, deltaY
+			fil = GeoGrid(gridFunction)
+			if a==True:
 				sumArray=np.array([[0.0]*fil.countx]*fil.county)
 				resArray=np.array([[0.0]*fil.countx]*fil.county)
-				del fil
-			fil = GeoGrid(gridFunction)
-			#print gridFunctionID
+				a==False
 			#if (gridFunctionID == 134) or (gridFunctionID == 135) or (gridFunctionID == 141):
-			if gridFunctionID==gridFunctionID:
-				#print gridFunctionID
-				#fil.printASCIIGRDFile(myWorkPath+"/TIC/"+subDir.split(ident)[1].split("_")[1]+".grd")
-				
+			if gridFunctionID == gridFunctionID:
 				resArray = np.array(fil.grap)
-				#print len(fil.grap), len(resArray), len(resArray[0])
 				resArray = np.transpose(resArray)
 				sumArray=sumArray + resArray
-
 			del fil
-		#maxx=np.max(sumArray)
-		#newmaxx=maxx*0.1
-		#for i in range(len(sumArray)):
-		#	for j in range(len(sumArray[i])):
-		#		if float(sumArray[i][j])>newmaxx:
-		#			sumArray[i][j]=newmaxx
-		if ii==ii:
-			fig = plt.figure()
-			ax1 = fig.add_subplot(111)
-			img = Image.open('123.png')
-
-			ax1.imshow(img, extent=[0, countx, 0, county])
-			x = np.arange (0,countx, 1)
-			y = np.arange (0,county, 1)
-			print countx
-			xgrid, ygrid = np.meshgrid(x, y)
-
-			levels = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0, 10000.0]
-			c = ('#5342f4', '#41a0f4', '#41f48b', '#d9f441', '#f47f41', '#f44341','#f90200', '#000000', '#5342f4')
-			contour = plt.contour(xgrid, ygrid, sumArray, levels, colors=c)
-			#plt.clabel(contour, colors = 'k', fmt = '%2.4f', fontsize=12)
-			#plt.clabel(contour, colors = 'k')
-			contour_filled = plt.contourf(xgrid, ygrid, sumArray, levels, colors=c, alpha=0.5)
-			#plt.colorbar(contour_filled)
-			plt.xlabel(u'x (км)')
-			plt.ylabel(u'y (км)')
-			ss=(u"Год ")+(time.strftime('%Y ', time.localtime(1451595600+int(ii)*7200)))+ (u"Месяц ")+(time.strftime('%m ', time.localtime(1451595600+int(ii)*7200)))+(u"День ")+(time.strftime('%d ', time.localtime(1451595600+int(ii)*7200)))+(u"Час ")+(time.strftime('%H ', time.localtime(1451595600+int(ii)*7200)))
-			plt.title(ss)
-    
-			xlabels = []
-			ylabels = []
-			aaa=-1*deltaToSourX
-			xx = np.arange(aaa, deltaX-deltaToSourX, 40)
-			
-			bbb=-1*deltaToSourY
-			yy = np.arange(bbb, deltaY-deltaToSourY, 40)
-			#txx = np.arange(0, deltaX, 16.6)
-			txx = np.linspace(0.0, deltaX, num=len(xx), endpoint=False)
-			
-			
-			tyy = np.linspace(0.0, deltaY, num=len(yy), endpoint=False)
-			#tyy = np.arange(0, deltaY, 16.6)
-			xx=np.append(xx, deltaX-deltaToSourX)
-			txx=np.append(txx, deltaX)
-			yy=np.append(yy, deltaY-deltaToSourY)
-			tyy=np.append(tyy, deltaY)
-			print xx, len(xx)
-			print txx, len(txx)
-			print yy, len(yy)
-			print tyy, len(tyy)
-			ax1.set_xticks(txx)
-			ax1.set_yticks(tyy)
-			#print xx
-			for i in xx:
-				xlabels.append('%d' % i)
-			for i in yy:
-				ylabels.append('%d' % i)
-			#print xlabels
-			ax1.set_xticklabels(xlabels)
-			ax1.set_yticklabels(ylabels)
+		fil = GeoGrid(gridFunction)
 		
-		plt.show()
+		# g = geod.Inverse(lat1, lon1, lat2, lon2) distance between lat1;lon1 and lat2, lon2
+		g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmax, fil.lonmin)#расстояние между ними
+		#print
+		length= g['s12']/1000.0
+		width1 = geod.Inverse(fil.latmin, fil.lonmin, fil.latmin, fil.lonmax)
+		width2 = geod.Inverse(fil.latmax,  fil.lonmin, fil.latmax, fil.lonmax)
+		width=(width1['s12']+width2['s12'])/2.0/1000.0
+		#print int(length), int(width), int(geod.Inverse(fil.latmin,  fil.lonmin, fil.latmin, fil.lonmax)['s12']/1000.0)
+		oxToSrc=int(geod.Inverse(fil.latmin,  fil.lonmin, fil.latmin, srcPosLon)['s12']/1000.0) #Похиция источника по х
+		oyToSrc=int(geod.Inverse(fil.latmin,  fil.lonmin, srcPosLat, fil.lonmin)['s12']/1000.0) #Позиция источника по у
+		#print oxToSrc, oyToSrc
+		
+		fig = plt.figure()
+		ax1 = fig.add_subplot(111)
+		img = Image.open('123.png')
+		ax1.imshow(img, extent=[0, fil.countx-1, 0, fil.county-1])
+		x = np.arange (0,fil.countx, 1)
+		y = np.arange (0,fil.county, 1)
+		xgrid, ygrid = np.meshgrid(x, y)
+		levels = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0] #Уровни изолиний
+		c = ('#000000', '#5342f4', '#41a0f4', '#41f48b', '#d9f441', '#f47f41', '#f44341','#f90200', '#000000') #Цвета для этих уровней
+		contour = plt.contour(xgrid, ygrid, sumArray, levels, colors=c)
+		#plt.clabel(contour, colors = 'k', fmt = '%2.4f', fontsize=12) #Для подписей значений на изолиниях
+		contour_filled = plt.contourf(xgrid, ygrid, sumArray, levels, colors=c, alpha=0.5) #Закрашивает области внутри изолиний цветом самих изолиний
+		#plt.colorbar(contour_filled) # Показывает соответствие цвета и значения
+		plt.xlabel(u'x (км)')
+		plt.ylabel(u'y (км)')
+		ss=(u"Год ")+(time.strftime('%Y ', time.localtime(1451595600+int(ii)*7200)))+ (u"Месяц ")+(time.strftime('%m ', time.localtime(1451595600+int(ii)*7200)))+(u"День ")+(time.strftime('%d ', time.localtime(1451595600+int(ii)*7200)))+(u"Час ")+(time.strftime('%H ', time.localtime(1451595600+int(ii)*7200)))
+		plt.title(ss)
+		xlabels = []
+		ylabels = []
+		aa = np.arange(-(oxToSrc//10)*10, ((width-oxToSrc)//10)*10+1, 20)  #Подписи осей +1 для того, чтобы учесть границу
+		print aa
+		xx=np.append([-oxToSrc], aa)
+		xx=np.append(xx, int(width-oxToSrc))
+		print xx
+		yy = np.arange(-oyToSrc, length-oyToSrc, 20)  #Подписи осей
+		txx = np.arange(0, fil.countx-1, 10) #Значения осей
+		tyy = np.arange(0, fil.county-1, 16.6) #Значения осей
+		ax1.set_xticks(txx) #Устанавливаем значения по х
+		ax1.set_yticks(tyy) #Устанавливаем значения по у
+		#print xx
+		for i in xx:
+			xlabels.append('%d' % i)
+		for i in yy:
+			ylabels.append('%d' % i) 
+		#print xlabels
+		ax1.set_xticklabels(xlabels)	#Ставим подписи по х
+		ax1.set_yticklabels(ylabels)	#Ставим подписи по у
+
+
 		save(str(ii))
-		
 		break
-	
-
+		
 			
 		
 
