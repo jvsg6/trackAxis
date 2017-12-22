@@ -253,7 +253,6 @@ def save(name='', fmt='png'):
 	return
 
 
-
 def main():
 	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
@@ -310,25 +309,48 @@ def main():
 		plt.ylabel(u'y (км)')
 		ss=(u"Год ")+(time.strftime('%Y ', time.localtime(1451595600+int(ii)*7200)))+ (u"Месяц ")+(time.strftime('%m ', time.localtime(1451595600+int(ii)*7200)))+(u"День ")+(time.strftime('%d ', time.localtime(1451595600+int(ii)*7200)))+(u"Час ")+(time.strftime('%H ', time.localtime(1451595600+int(ii)*7200)))
 		plt.title(ss)
+		
 		xlabels = []
-		ylabels = []
-		aa = np.arange(-(oxToSrc//10)*10, ((width-oxToSrc)//10)*10+1, 20)  #Подписи осей +1 для того, чтобы учесть границу
-		print aa
+		razb=10
+		aa = np.arange(-(oxToSrc//razb)*razb, ((width-oxToSrc)//razb)*razb+1, razb)  #Подписи осей +1 для того, чтобы учесть границу
 		xx=np.append([-oxToSrc], aa)
 		xx=np.append(xx, int(width-oxToSrc))
-		print xx
-		yy = np.arange(-oyToSrc, length-oyToSrc, 20)  #Подписи осей
-		txx = np.arange(0, fil.countx-1, 10) #Значения осей
-		tyy = np.arange(0, fil.county-1, 16.6) #Значения осей
+		print xx, len(xx)
+		left=(oxToSrc%razb)/width
+		right=((width-oxToSrc)%razb)/width
+		txxLeft=(fil.countx-1)*left
+		txxRight=(fil.countx-1)*right
+		delx=razb/((oxToSrc//razb)*razb+((width-oxToSrc)//razb)*razb+1)*(fil.countx-1-txxLeft-txxRight)
+		print left, txxLeft, right,txxRight, delx
+		txx=np.array([])
+		
+		txx = np.append([0.0], np.arange(txxLeft, fil.countx, delx)) #Значения осей
+		txx = np.append( txx, txx[len(txx)-1]+txxRight)
+		txx[len(txx)-1]=fil.countx-1
+		#print np.arange(left, fil.countx, delx)
+		print txx, len(txx)
+
 		ax1.set_xticks(txx) #Устанавливаем значения по х
-		ax1.set_yticks(tyy) #Устанавливаем значения по у
 		#print xx
-		for i in xx:
+		for n, i in enumerate(xx):
+			if n==0 or n==len(xx)-1:
+				xlabels.append('') #Убираем подписи на границах
+				continue			
 			xlabels.append('%d' % i)
+		ax1.set_xticklabels(xlabels)	#Ставим подписи по х
+		
+		
+		ylabels = []
+		yy = np.arange(-oyToSrc, length-oyToSrc, 20)  #Подписи осей
+		
+		
+		tyy = np.arange(0, fil.county-1, 16.6) #Значения осей
+		ax1.set_yticks(tyy) #Устанавливаем значения по у
+
 		for i in yy:
 			ylabels.append('%d' % i) 
 		#print xlabels
-		ax1.set_xticklabels(xlabels)	#Ставим подписи по х
+		
 		ax1.set_yticklabels(ylabels)	#Ставим подписи по у
 
 
