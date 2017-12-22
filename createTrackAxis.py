@@ -1,5 +1,15 @@
 #!/usr/bin/python2.7
 # -*- coding: utf-8 -*-
+#Модуль для построения осей следа по готовым GRD сеткам
+
+#Запуск: 
+#1. Запускается модуль createVariationalSeriesFI 
+#2. Запускается модуль createVariationalSeriesGRD.py
+#3. Запускается данный модуль.
+
+#Разработан: 12.10.2017 
+#Автор: Киселев А.А.
+#Последняя модификация: 22.12.2017
 import sys
 import os
 
@@ -18,10 +28,10 @@ axeRadius = [0.0,0.2,0.4,0.6,0.8,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,12.0,1
 #Вводим точность для углов:
 dphi = 0.01
 axeMaxPoints = []
-pathToGRD="/home/egor/work/GRD/" #папка с с готовыми для обработки grd файлами
-pathToAxis="/home/egor/work/Axis/" #папка куда будут сохраняться оси следа
+pathToGRD="/home/egor/quest/criticalGroup/GRD" #папка с с готовыми для обработки grd файлами
+pathToAxis="./Axis/" #папка куда будут сохраняться оси следа
 #
-pathToDphi="/home/egor/work/dphi_{}.dat".format(str(dphi).replace('.', ''))
+pathToDphi="/home/egor/work/dphi_{}.dat".format(str(dphi).replace('.', '')) #Путь до dphi файла(файл с насчитанными координатами)
 srcPosLon = 33.5403694792
 srcPosLat = 36.1449943051
 
@@ -281,7 +291,7 @@ def main():
 	os.chdir(mypath)
 	curDir = str(mypath)
 	if os.path.isdir(pathToAxis)==False:
-		os.mkdir(pathToAxis)
+		os.makedirs(pathToAxis)
 	findOrCreate(curDir)
 	#print axePoints
 	global axeMaxPoints
@@ -291,7 +301,7 @@ def main():
 	for filename in os.listdir(str(pathToGRD)):
 		lst.append(filename)
 		try:
-			et = open(str(pathToGRD)+str(filename), 'r')
+			et = open(str(pathToGRD)+"/"+str(filename), 'r')
 		except IOError:
 			print ("No such file")
 		fil = GeoGrid(et)
