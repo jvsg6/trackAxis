@@ -18,12 +18,15 @@ geod = Geodesic.WGS84
 from matplotlib import rcParams
 mpl.rcParams['font.family'] = 'fantasy'
 mpl.rcParams['font.fantasy'] = 'Times New Roman', 'Ubuntu','Arial','Tahoma','Calibri'
+#Позиция источника
 srcPosLon = 33.5403694792
 srcPosLat = 36.1449943051
+#srcPosLon = 40.9825453158
+#srcPosLat = 57.0136600777
 #1451606400
 import time
 
-
+razb=20 # Интервал разбиения в километрах
 number=0
 import numpy as np
 
@@ -251,9 +254,36 @@ def save(name='', fmt='png'):
 	os.chdir(pwd)
 	plt.close()
 	return
+def labelsAxis(gridfil, dist, toSrc, axisCount):
+	global razb
+	labels = []
+	aa = np.arange(-(toSrc//razb)*razb, ((dist-toSrc)//razb)*razb+1, razb)  #Подписи осей +1 для того, чтобы учесть границу
+	axisArr=np.append([-toSrc], aa)
+	axisArr=np.append(axisArr, int(dist-toSrc))
+	print axisArr, len(axisArr)
+	left=(toSrc%razb)/dist
+	right=((dist-toSrc)%razb)/dist
+	valLeft=(axisCount-1)*left
+	valRight=(axisCount-1)*right
+	delx=razb/((toSrc//razb)*razb+((dist-toSrc)//razb)*razb+1)*(axisCount-1-valLeft-valRight)
+	print left, valLeft, right,valRight, delx
+	val=np.array([])
+	val = np.append([0.0], np.arange(valLeft, axisCount, delx)) #Значения осей
+	val = np.append( val, val[len(val)-1]+valRight)
+	val[len(val)-1]=axisCount-1
+	#print np.arange(left, axisCount, delx)
+	print val, len(val)
+	#print axisArr
+	for n, i in enumerate(axisArr):
+		if n==0 or n==len(axisArr)-1:
+			labels.append('') #Убираем подписи на границах
+			continue			
+		labels.append('%d' % i)
+	return labels, val
 
 
 def main():
+	global oxToSrc, oyToSrc
 	#"f134","f135","f141"
 	alltime = 366*24*3600/7200
 	for ii in range(0, alltime+1, 12):
@@ -282,15 +312,15 @@ def main():
 		
 		# g = geod.Inverse(lat1, lon1, lat2, lon2) distance between lat1;lon1 and lat2, lon2
 		g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmax, fil.lonmin)#расстояние между ними
-		#print
 		length= g['s12']/1000.0
-		width1 = geod.Inverse(fil.latmin, fil.lonmin, fil.latmin, fil.lonmax)
-		width2 = geod.Inverse(fil.latmax,  fil.lonmin, fil.latmax, fil.lonmax)
-		width=(width1['s12']+width2['s12'])/2.0/1000.0
-		#print int(length), int(width), int(geod.Inverse(fil.latmin,  fil.lonmin, fil.latmin, fil.lonmax)['s12']/1000.0)
-		oxToSrc=int(geod.Inverse(fil.latmin,  fil.lonmin, fil.latmin, srcPosLon)['s12']/1000.0) #Похиция источника по х
-		oyToSrc=int(geod.Inverse(fil.latmin,  fil.lonmin, srcPosLat, fil.lonmin)['s12']/1000.0) #Позиция источника по у
-		#print oxToSrc, oyToSrc
+		gwidth = geod.Inverse(srcPosLat, fil.lonmin, srcPosLat, fil.lonmax)
+		width=(gwidth['s12'])/1000.0
+		#width=794.0
+		print "shir " + str(width)
+
+		oxToSrc=int(geod.Inverse(srcPosLat,  fil.lonmin, srcPosLat, srcPosLon)['s12']/1000.0) #Позиция источника по х
+		oyToSrc=int(geod.Inverse(fil.latmin,  srcPosLon, srcPosLat, srcPosLon)['s12']/1000.0) #Позиция источника по у
+
 		
 		fig = plt.figure()
 		ax1 = fig.add_subplot(111)
@@ -310,48 +340,15 @@ def main():
 		ss=(u"Год ")+(time.strftime('%Y ', time.localtime(1451595600+int(ii)*7200)))+ (u"Месяц ")+(time.strftime('%m ', time.localtime(1451595600+int(ii)*7200)))+(u"День ")+(time.strftime('%d ', time.localtime(1451595600+int(ii)*7200)))+(u"Час ")+(time.strftime('%H ', time.localtime(1451595600+int(ii)*7200)))
 		plt.title(ss)
 		
-		xlabels = []
-		razb=10
-		aa = np.arange(-(oxToSrc//razb)*razb, ((width-oxToSrc)//razb)*razb+1, razb)  #Подписи осей +1 для того, чтобы учесть границу
-		xx=np.append([-oxToSrc], aa)
-		xx=np.append(xx, int(width-oxToSrc))
-		print xx, len(xx)
-		left=(oxToSrc%razb)/width
-		right=((width-oxToSrc)%razb)/width
-		txxLeft=(fil.countx-1)*left
-		txxRight=(fil.countx-1)*right
-		delx=razb/((oxToSrc//razb)*razb+((width-oxToSrc)//razb)*razb+1)*(fil.countx-1-txxLeft-txxRight)
-		print left, txxLeft, right,txxRight, delx
-		txx=np.array([])
-		
-		txx = np.append([0.0], np.arange(txxLeft, fil.countx, delx)) #Значения осей
-		txx = np.append( txx, txx[len(txx)-1]+txxRight)
-		txx[len(txx)-1]=fil.countx-1
-		#print np.arange(left, fil.countx, delx)
-		print txx, len(txx)
-
-		ax1.set_xticks(txx) #Устанавливаем значения по х
-		#print xx
-		for n, i in enumerate(xx):
-			if n==0 or n==len(xx)-1:
-				xlabels.append('') #Убираем подписи на границах
-				continue			
-			xlabels.append('%d' % i)
-		ax1.set_xticklabels(xlabels)	#Ставим подписи по х
 		
 		
-		ylabels = []
-		yy = np.arange(-oyToSrc, length-oyToSrc, 20)  #Подписи осей
+		axArr=labelsAxis(fil, width, oxToSrc, fil.countx)
+		ax1.set_xticks(axArr[1]) #Устанавливаем значения по х
+		ax1.set_xticklabels(axArr[0])	#Ставим подписи по х
 		
-		
-		tyy = np.arange(0, fil.county-1, 16.6) #Значения осей
-		ax1.set_yticks(tyy) #Устанавливаем значения по у
-
-		for i in yy:
-			ylabels.append('%d' % i) 
-		#print xlabels
-		
-		ax1.set_yticklabels(ylabels)	#Ставим подписи по у
+		axArr=labelsAxis(fil, length, oyToSrc, fil.county)
+		ax1.set_yticks(axArr[1]) #Устанавливаем значения по у
+		ax1.set_yticklabels(axArr[0])	#Ставим подписи по у
 
 
 		save(str(ii))
