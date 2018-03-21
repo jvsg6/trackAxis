@@ -360,6 +360,11 @@ def addComplexTable(document,scenario,mainTitle,multiplier,t1,t2,t3,t4,t5,t6,t7,
 				addTextToTablesCell(row_cells[pos+1],format(getValueForConfidence(pointId,val, float(listOfConInt[num]))*multiplier, '.2E').replace('.', ','), WD_ALIGN_PARAGRAPH.CENTER)
 
 	return 
+def writeOrgans(ws, *args):
+	global shift
+	for nameId, name in enumerate(args):
+		ws.cell(row = 3+shift, column = 2+nameId, value = name)
+	return
 # Таблица 1 – Прогнозируемые дозы за счет внешнего облучения от облака и от выпадений на поверхность земли (взвешенные по ОБЭ дозы за первые 10 ч), Гр . scenario
 def createTable1(scenario, separate, createNew):
 	global nameConfInt, shift
@@ -508,45 +513,61 @@ def createTable2(scenario, separate, createNew):
 	return
 
 # Таблица 3 – Прогнозируемые дозы за счет: внутреннего облучения от ингаляционного поступления радионуклидов для детей (взвешенные по ОБЭ дозы по внутреннему пути облучения за период 30 суток), Гр . scenario
-def createTable3(scenario, separate):
-	global nameConfInt
+def createTable3(scenario, separate, createNew):
+	global nameConfInt, shift
 	_RED_MARROW = maxGridForDoseNew("f32","f33","f34","f35","f36")
 	_THYROID = maxGridForDoseNew("f48","f49","f50","f51","f52")
 	_LUNGS = maxGridForDoseNew("f40","f41","f42","f43","f44")
 	_UPPER_LARGE_INTESTINE_WALL = maxGridForDoseNew("f56","f57","f58","f59","f60")
 	_LOWER_LARGE_INTESTINE_WALL = maxGridForDoseNew("f64","f65","f66","f67","f68")
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 3'
-	ws.merge_cells('A1:E1')
-	ws.merge_cells('A2:A3')
-	ws.merge_cells('B2:E2')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 3'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
+	startCol = 1; endCol = 5; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:E1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 3 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет: внутреннего облучения от ингаляционного поступления радионуклидов для детей (взвешенные по ОБЭ дозы по внутреннему пути облучения за период 30 суток), Гр . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
 	
-	ws['A1'] = u'Таблица 3 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет: внутреннего облучения от ингаляционного поступления радионуклидов для детей (взвешенные по ОБЭ дозы по внутреннему пути облучения за период 30 суток), Гр . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
-	ws['B2'] = u'Дозы на органы (дети)'
+	startCol = 1; endCol = 1; sratrRow = 2+shift; endRow = 3+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A2:A3')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Населенные пункты (долгота; широта; расстояние, км)')
 	
-	ws['B3'] = u'красный костный мозг'
-	ws['C3'] = u'щитовидная железа'
-	ws['D3'] = u'легкие'
-	ws['E3'] = u'толстый кишечник'
+	startCol = 2; endCol = 5; sratrRow = 2+shift; endRow = 2+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('B2:E2')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Дозы на органы (дети)')
+
+	writeOrgans(ws, u'красный костный мозг', u'щитовидная железа', u'легкие', u'толстый кишечник')
+
 	
 	organs = 4
 	curPos = 4
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=5, value=0.57*getValueForConfidence(pointId,_UPPER_LARGE_INTESTINE_WALL, float(ConInt)) + 0.43*getValueForConfidence(pointId,_LOWER_LARGE_INTESTINE_WALL, float(ConInt)) )
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=5, value=0.57*getValueForConfidence(pointId,_UPPER_LARGE_INTESTINE_WALL, float(ConInt)) + 0.43*getValueForConfidence(pointId,_LOWER_LARGE_INTESTINE_WALL, float(ConInt)) )
 	
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	wb.save(oFileFolder+"/Table3.xlsx")
+	if separate:		
+		wb.save(oFileFolder+"/Table3.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _RED_MARROW[:]
 	del _THYROID[:]
@@ -557,8 +578,8 @@ def createTable3(scenario, separate):
 	return
 
 # Таблица 4 – Прогнозируемые дозы за счет: внешнего облучения от облака и от выпадений на поверхность земли (взвешенные по ОБЭ дозы за первые 30 суток), Гр . scenario
-def createTable4(scenario, separate):
-	global nameConfInt
+def createTable4(scenario, separate, createNew):
+	global nameConfInt, shift
 	_RED_MARROW = sumGridForDoseNew("f30","f31")
 	_THYROID = sumGridForDoseNew("f46","f47")
 	_LUNGS = sumGridForDoseNew("f38","f39")
@@ -566,40 +587,55 @@ def createTable4(scenario, separate):
 	_LOWER_LARGE_INTESTINE_WALL = sumGridForDoseNew("f62","f63")
 	_FOETUS = sumGridForDoseNew("f3","f9")
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 4'
-	ws.merge_cells('A1:F1')
-	ws.merge_cells('A2:A3')
-	ws.merge_cells('B2:F2')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 4'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
 	
-	ws['A1'] = u'Таблица 4 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет: внешнего облучения от облака и от выпадений на поверхность земли (взвешенные по ОБЭ дозы за первые 30 суток), Гр . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км; расстояние, км)'
-	ws['B2'] = u'Дозы на органы'
+	startCol = 1; endCol = 6; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:F1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 4 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет: внешнего облучения от облака и от выпадений на поверхность земли (взвешенные по ОБЭ дозы за первые 30 суток), Гр . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
 	
-	ws['B3'] = u'красный костный мозг'
-	ws['C3'] = u'щитовидная железа'
-	ws['D3'] = u'легкие'
-	ws['E3'] = u'толстый кишечник'
-	ws['F3'] = u'плод'
+	startCol = 1; endCol = 1; sratrRow = 2+shift; endRow = 3+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A2:A3')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Населенные пункты (долгота; широта; расстояние, км)')
+	
+	startCol = 2; endCol = 6; sratrRow = 2+shift; endRow = 2+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('B2:F2')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Дозы на органы')
+	
+	writeOrgans(ws, u'красный костный мозг', u'щитовидная железа', u'легкие', u'толстый кишечник', u'плод')
 	
 	organs = 5
 	curPos = 4
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=5, value=0.57*getValueForConfidence(pointId,_UPPER_LARGE_INTESTINE_WALL, float(ConInt)) + 0.43*getValueForConfidence(pointId,_LOWER_LARGE_INTESTINE_WALL, float(ConInt)) )
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=6, value=getValueForConfidence(pointId,_FOETUS, float(ConInt)))
-		
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=5, value=0.57*getValueForConfidence(pointId,_UPPER_LARGE_INTESTINE_WALL, float(ConInt)) + 0.43*getValueForConfidence(pointId,_LOWER_LARGE_INTESTINE_WALL, float(ConInt)) )
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=6, value=getValueForConfidence(pointId,_FOETUS, float(ConInt)))
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	wb.save(oFileFolder+"/Table4.xlsx")
 	
+	if separate:		
+		wb.save(oFileFolder+"/Table4.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	del _RED_MARROW[:]
 	del _THYROID[:]
 	del _LUNGS[:]
@@ -610,8 +646,8 @@ def createTable4(scenario, separate):
 	return
 
 # Таблица 5 – Прогнозируемые эквивалентные и эффективная дозы за счет: облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов для взрослых (доза за 10 суток), Зв . scenario
-def createTable5(scenario, separate):
-	global nameConfInt
+def createTable5(scenario, separate, createNew):
+	global nameConfInt, shift
 	_RED_MARROW = sumGridForDoseNew("f142","f143","f149")
 	_THYROID = sumGridForDoseNew("f166","f167","f173")
 	_LUNGS = sumGridForDoseNew("f150","f151","f157")
@@ -621,43 +657,58 @@ def createTable5(scenario, separate):
 	_OVARIES = sumGridForDoseNew("f174","f175","f181")
 	_EFFECTIVE_DOSE = sumGridForDoseNew("f134","f135","f141")
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 5'
-	ws.merge_cells('A1:H1')
-	ws.merge_cells('A2:A3')
-	ws.merge_cells('B2:H2')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 5'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
+
 	
-	ws['A1'] = u'Таблица 5 – Прогнозируемые эквивалентные и эффективная дозы с уровнями доверия varSeries процентов за счет: облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов для взрослых (доза за 10 суток), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
-	ws['B2'] = u'Дозы на органы (взрослые)'
+	startCol = 1; endCol = 8; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:H1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 5 – Прогнозируемые эквивалентные и эффективная дозы с уровнями доверия varSeries процентов за счет: облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов для взрослых (доза за 10 суток), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
 	
-	ws['B3'] = u'красный костный мозг'
-	ws['C3'] = u'щитовидная железа'
-	ws['D3'] = u'легкие'
-	ws['E3'] = u'тонкий кишечник'
-	ws['F3'] = u'кожа'
-	ws['G3'] = u'гонады'
-	ws['H3'] = u'эффективная доза'
+	startCol = 1; endCol = 1; sratrRow = 2+shift; endRow = 3+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A2:A3')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Населенные пункты (долгота; широта; расстояние, км)')
+	
+	startCol = 2; endCol = 8; sratrRow = 2+shift; endRow = 2+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('B2:H2')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Дозы на органы (взрослые)')
+	
+	writeOrgans(ws, u'красный костный мозг', u'щитовидная железа', u'легкие', u'тонкий кишечник',  u'кожа', u'гонады', u'эффективная доза')
 	
 	organs = 7
 	curPos = 4
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=5, value=getValueForConfidence(pointId,_SMALL_INTESTINE_WALL, float(ConInt)) )
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=6, value=getValueForConfidence(pointId,_SKIN, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=7, value=max(getValueForConfidence(pointId,_OVARIES, float(ConInt)),getValueForConfidence(pointId,_TESTES, float(ConInt))))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=8, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE, float(ConInt)) )
-
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=5, value=getValueForConfidence(pointId,_SMALL_INTESTINE_WALL, float(ConInt)) )
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=6, value=getValueForConfidence(pointId,_SKIN, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=7, value=max(getValueForConfidence(pointId,_OVARIES, float(ConInt)),getValueForConfidence(pointId,_TESTES, float(ConInt))))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=8, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE, float(ConInt)) )
+			
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	wb.save(oFileFolder+"/Table5.xlsx")
+	
+	if separate:		
+		wb.save(oFileFolder+"/Table5.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _RED_MARROW[:]
 	del _THYROID[:]
@@ -671,8 +722,8 @@ def createTable5(scenario, separate):
 	return
 
 # Таблица 6 – Прогнозируемые эквивалентные и эффективная дозы за счет: облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов для детей (доза за 10 суток), Зв . scenario
-def createTable6(scenario, separate):
-	global nameConfInt
+def createTable6(scenario, separate, createNew):
+	global nameConfInt, shift
 	_RED_MARROW = sumGridForDose(sumGridForDoseNew("f142","f143"),maxGridForDoseNew("f144","f145","f146","f147","f148"))
 	_THYROID = sumGridForDose(sumGridForDoseNew("f166","f167"),maxGridForDoseNew("f168","f169","f170","f171","f172"))
 	_LUNGS = sumGridForDose(sumGridForDoseNew("f150","f151"),maxGridForDoseNew("f152","f153","f154","f155","f156"))
@@ -682,43 +733,58 @@ def createTable6(scenario, separate):
 	_OVARIES = sumGridForDose(sumGridForDoseNew("f174","f175"),maxGridForDoseNew("f176","f177","f178","f179","f180"))
 	_EFFECTIVE_DOSE = sumGridForDose(sumGridForDoseNew("f134","f135"),maxGridForDoseNew("f136","f137","f138","f139","f140"))
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 6'
-	ws.merge_cells('A1:H1')
-	ws.merge_cells('A2:A3')
-	ws.merge_cells('B2:H2')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 6'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
+
+	startCol = 1; endCol = 8; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:H1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 6 – Прогнозируемые эквивалентные и эффективная дозы с уровнями доверия varSeries процентов за счет: облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов для детей (доза за 10 суток), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
 	
-	ws['A1'] = u'Таблица 6 – Прогнозируемые эквивалентные и эффективная дозы с уровнями доверия varSeries процентов за счет: облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов для детей (доза за 10 суток), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
-	ws['B2'] = u'Дозы на органы (дети)'
+	startCol = 1; endCol = 1; sratrRow = 2+shift; endRow = 3+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A2:A3')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Населенные пункты (долгота; широта; расстояние, км)')
 	
-	ws['B3'] = u'красный костный мозг'
-	ws['C3'] = u'щитовидная железа'
-	ws['D3'] = u'легкие'
-	ws['E3'] = u'тонкий кишечник'
-	ws['F3'] = u'кожа'
-	ws['G3'] = u'гонады'
-	ws['H3'] = u'эффективная доза'
+	startCol = 2; endCol = 8; sratrRow = 2+shift; endRow = 2+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('B2:H2')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Дозы на органы (дети)')
+	
+	writeOrgans(ws, u'красный костный мозг', u'щитовидная железа', u'легкие', u'тонкий кишечник',  u'кожа', u'гонады', u'эффективная доза')
+	
 	
 	organs = 7
 	curPos = 4
 	for pointId, point in enumerate(pointsForAnalysis):	
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=5, value=getValueForConfidence(pointId,_SMALL_INTESTINE_WALL, float(ConInt)) )
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=6, value=getValueForConfidence(pointId,_SKIN, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=7, value=max(getValueForConfidence(pointId,_OVARIES, float(ConInt)),getValueForConfidence(pointId,_TESTES, float(ConInt))))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=8, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE, float(ConInt)) )
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_RED_MARROW, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_THYROID, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_LUNGS, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=5, value=getValueForConfidence(pointId,_SMALL_INTESTINE_WALL, float(ConInt)) )
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=6, value=getValueForConfidence(pointId,_SKIN, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=7, value=max(getValueForConfidence(pointId,_OVARIES, float(ConInt)),getValueForConfidence(pointId,_TESTES, float(ConInt))))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=8, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE, float(ConInt)) )
 
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	wb.save(oFileFolder+"/Table6.xlsx")
+	
+	if separate:		
+		wb.save(oFileFolder+"/Table6.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _RED_MARROW[:]
 	del _THYROID[:]
@@ -732,44 +798,57 @@ def createTable6(scenario, separate):
 	return
 
 # Таблица 7 – Прогнозируемые дозы за счет внешнего облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов (взрослые), Зв . scenario
-def createTable7(scenario, separate):
-	global nameConfInt
+def createTable7(scenario, separate, createNew):
+	global nameConfInt, shift
 	_THYROID_7 = sumGridForDoseNew("f200","f201","f173")
 	_FOETUS_7 = sumGridForDoseNew("f3","f5","f2")
 	_EFFECTIVE_DOSE_7 = sumGridForDoseNew("f198","f199","f141")
 	_FOETUS_365 = sumGridForDoseNew("f3","f4","f2")
 	_EFFECTIVE_DOSE_365 = sumGridForDoseNew("f204","f205","f141")
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 7'
-	ws.merge_cells('A1:F1')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 7'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
 	
-	ws['A1'] = u'Таблица 7 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет внешнего облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов (взрослые), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
+	startCol = 1; endCol = 6; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:F1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 7 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет внешнего облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов (взрослые), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
 	
-	ws['B2'] = u'Эквивалентная доза на щитовидную железу за 7 суток'
-	ws['C2'] = u'Эквивалентная доза на плод за 7 суток'
-	ws['D2'] = u'Эффективная доза за 7 суток'
-	ws['E2'] = u'Эквивалентная доза на плод за первый год'
-	ws['F2'] = u'Эффективная доза за первый год'
+	startCol = 1; sratrRow = 2+shift
+	ws.cell(row = sratrRow, column = startCol,  value =u'Населенные пункты (долгота; широта; расстояние, км)')
+	
+	writeOrgans(ws, u'Эквивалентная доза на щитовидную железу за 7 суток', u'Эквивалентная доза на плод за 7 суток', u'Эффективная доза за 7 суток', u'Эквивалентная доза на плод за первый год', u'Эффективная доза за первый год')
 	
 	organs = 5
 	curPos = 3
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_THYROID_7, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_FOETUS_7, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_7, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=5, value=getValueForConfidence(pointId,_FOETUS_365, float(ConInt)) )
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=6, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_365, float(ConInt)))
-
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_THYROID_7, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_FOETUS_7, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_7, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=5, value=getValueForConfidence(pointId,_FOETUS_365, float(ConInt)) )
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=6, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_365, float(ConInt)))
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 
-	wb.save(oFileFolder+"/Table7.xlsx")
+	
+	if separate:		
+		wb.save(oFileFolder+"/Table7.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _THYROID_7[:]
 	del _FOETUS_7[:]
@@ -780,38 +859,54 @@ def createTable7(scenario, separate):
 	return
 
 # Таблица 8 – Прогнозируемые дозы за счет внешнего облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов (дети), Зв . scenario
-def createTable8(scenario, separate):
-	global nameConfInt
+def createTable8(scenario, separate, createNew):
+	global nameConfInt, shift
 	_THYROID_7 =    sumGridForDose(sumGridForDoseNew("f200","f201"),maxGridForDoseNew("f168","f169","f170","f171","f172"))
 	_EFFECTIVE_DOSE_7 =  sumGridForDose(sumGridForDoseNew("f198","f199"),maxGridForDoseNew("f136","f137","f138","f139","f140"))
 	_EFFECTIVE_DOSE_365 = sumGridForDose(sumGridForDoseNew("f204","f205"),maxGridForDoseNew("f136","f137","f138","f139","f140"))
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 8'
-	ws.merge_cells('A1:D1')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 8'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
 	
-	ws['A1'] = u'Таблица 8 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет внешнего облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов (дети), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
 	
-	ws['B2'] = u'Эквивалентная доза на щитовидную железу за 7 суток'
-	ws['C2'] = u'Эффективная доза за 7 суток'
-	ws['D2'] = u'Эффективная доза за первый год'
+	startCol = 1; endCol = 4; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:D1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 8 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет внешнего облучения от облака и от выпадений на поверхность земли и внутреннего облучения от ингаляционного поступления радионуклидов (дети), Зв . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
+	
+	startCol = 1; sratrRow = 2+shift
+	ws.cell(row = sratrRow, column = startCol,  value =u'Населенные пункты (долгота; широта; расстояние, км)')
+	
+	writeOrgans(ws, u'Эквивалентная доза на щитовидную железу за 7 суток', u'Эффективная доза за 7 суток', u'Эффективная доза за первый год')
 	
 	organs = 3
 	curPos = 3
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_THYROID_7, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_7, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_365, float(ConInt)))
-
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_THYROID_7, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_7, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_EFFECTIVE_DOSE_365, float(ConInt)))
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	wb.save(oFileFolder+"/Table8.xlsx")
+	
+	if separate:		
+		wb.save(oFileFolder+"/Table8.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _THYROID_7[:]
 	del _EFFECTIVE_DOSE_7[:]
@@ -820,70 +915,99 @@ def createTable8(scenario, separate):
 	return
 
 # Таблица 9 – Прогнозируемые дозы за счет попадания радионуклидов внутрь организма пероральным путем, Зв . scenario 
-def createTable9(scenario,milk_plants_meat = [0.0]*3):
-	global nameConfInt
+def createTable9(createNew, scenario,milk_plants_meat = [0.0]*3):
+	global nameConfInt, shift
 	_FALLOUT = sumGridForDoseNew("f0")
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 9'
-	ws.merge_cells('A1:D1')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 9'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
 	
-	ws['A1'] = u'Таблица 9 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет попадания радионуклидов внутрь организма пероральным путем, Зв . scenario'.replace("scenario",scenario)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
+	startCol = 1; endCol = 4; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:D1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 9 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет попадания радионуклидов внутрь организма пероральным путем, Зв . scenario'.replace("scenario",scenario))
 	
-	ws['B2'] = u'Эффективная доза за первый год за счет потребления молока'
-	ws['C2'] = u'Эффективная доза за первый год за счет потребления мяса'
-	ws['D2'] = u'Эффективная доза за первый год за счет потребления овощей'
+	startCol = 1; sratrRow = 2+shift
+	ws.cell(row = sratrRow, column = startCol,  value =u'Населенные пункты (долгота; широта; расстояние, км)')
+	
+	writeOrgans(ws, u'Эффективная доза за первый год за счет потребления молока', u'Эффективная доза за первый год за счет потребления мяса', u'Эффективная доза за первый год за счет потребления овощей')
 	
 	organs = 3
 	curPos = 3
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws['A'+str(curPos+pointId*len(listOfConInt)+shift)] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt))*milk_plants_meat[0])
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt))*milk_plants_meat[2])
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=4, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt))*milk_plants_meat[1])
-
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt))*milk_plants_meat[0])
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt))*milk_plants_meat[2])
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=4, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt))*milk_plants_meat[1])
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	wb.save(oFileFolder+"/Table9.xlsx")
+	if separate:		
+		wb.save(oFileFolder+"/Table9.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _FALLOUT[:]
 	return
 
 #Таблица 10 – Прогнозируемые плотность поверхностных выпадений и проинтегрированная по времени концентрация
-def createTable10(scenario, separate):
-	global nameConfInt
+def createTable10(scenario, separate, createNew):
+	global nameConfInt, shift
 	_FALLOUT = sumGridForDoseNew("f0")
 	_TIC = sumGridForDoseNew("f1")
 	
-	wb = openpyxl.Workbook()
-	ws = wb.worksheets[0]
-	ws.title = u'Таблица 10'
-	ws.merge_cells('A1:C1')
+	wb = None
+	if separate:
+		wb = openpyxl.Workbook()
+		ws = wb.worksheets[0]
+		ws.title = u'Таблица 10'
+		shift = 0
+	else:
+		if createNew:
+			wb = openpyxl.Workbook()
+			ws = wb.worksheets[0]
+		else:
+			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
+			ws = wb.worksheets[0]
 	
-	ws['A1'] = u'Таблица 10 – Прогнозируемые с уровнями доверия varSeries процентов плотность поверхностных выпадений и проинтегрированная по времени концентрация. scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt)
-	ws['A2'] = u'Населенные пункты (долгота; широта; расстояние, км)'
+	startCol = 1; endCol = 3; sratrRow = 1+shift; endRow = 1+shift
+	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:C1')
+	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 10 – Прогнозируемые с уровнями доверия varSeries процентов плотность поверхностных выпадений и проинтегрированная по времени концентрация. scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
+	startCol = 1; sratrRow = 2+shift
+	ws.cell(row = sratrRow, column = startCol,  value =u'Населенные пункты (долгота; широта; расстояние, км)')
 	
-	ws['B2'] = u'Плотность поверхностных выпадений, Бк/кв.м.'
-	ws['C2'] = u'Проинтегрированная по времени концентрация, Бк·с/кб.м.'
+	writeOrgans(ws, u'Плотность поверхностных выпадений, Бк/кв.м.', u'Проинтегрированная по времени концентрация, Бк·с/кб.м.')
 	
 	organs = 2
 	curPos = 3
 	for pointId, point in enumerate(pointsForAnalysis):
-		ws['A'+str(curPos+pointId*len(listOfConInt))] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
+		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=2, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt)))
-			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt), column=3, value=getValueForConfidence(pointId,_TIC, float(ConInt)))
-
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=2, value=getValueForConfidence(pointId,_FALLOUT, float(ConInt)))
+			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=3, value=getValueForConfidence(pointId,_TIC, float(ConInt)))
+	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 
-	wb.save(oFileFolder+"/Table10.xlsx")
+	
+	if separate:		
+		wb.save(oFileFolder+"/Table10.xlsx")
+	else:
+		wb.save(oFileFolder+"/Table.xlsx")
 	
 	del _FALLOUT[:]
 	del _TIC[:]
@@ -1233,14 +1357,14 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 		createTable1(scenario, separate, createNew)
 		createNew = False
 		createTable2(scenario, separate, createNew)
-		createTable3(scenario, separate)
-		createTable4(scenario, separate)
-		createTable5(scenario, separate)
-		createTable6(scenario, separate)
-		createTable7(scenario, separate)
-		createTable8(scenario, separate)
-		createTable10(scenario, separate)
-		createTable9(scenario,milk_plants_meat = [2.82E-08, 1.04E-08, 1.57E-08])
+		createTable3(scenario, separate, createNew)
+		createTable4(scenario, separate, createNew)
+		createTable5(scenario, separate, createNew)
+		createTable6(scenario, separate, createNew)
+		createTable7(scenario, separate, createNew)
+		createTable8(scenario, separate, createNew)
+		createTable10(scenario, separate, createNew)
+		createTable9(createNew, scenario,milk_plants_meat = [2.82E-08, 1.04E-08, 1.57E-08])
 	print("Ok!")
 	return
 
