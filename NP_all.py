@@ -46,108 +46,7 @@ def reaNPFromFile(pathToFile):
 		
 	return pointsForAnalysis
 
-class GeoGrid:
-	def __init__(self,countx,county,lonmin,latmin,dlon,dlat,lonmax,latmax):
-		self.lonmin = lonmin
-		self.lonmax = lonmax
-		self.latmin = latmin
-		self.latmax = latmax
-		self.countx = countx
-		self.county = county
-		self.fmin   = 0.0
-		self.fmax   = 0.0		
-		self.dlon = dlon
-		self.dlat = dlat
-		self.data   = [0.0 for o in range(countx*county)]
-	
-	def findMin(self):
-		if(len(self.data) == 0):
-			return -1
-		ret = self.data[0]
-		for v in self.data:
-			if(ret > v):
-				ret = v
-		return ret
-		
-	def findMax(self):
-		if(len(self.data) == 0):
-			return -1
-		ret = self.data[0]
-		for v in self.data:
-			if(ret < v):
-				ret = v
-		return ret			
 
-	def printASCIIGRDFile(self,filename):
-		f = open(filename, 'wt')
-		f.write("DSAA" + '\r\n')
-		f.write(str(self.countx)+"\t"+str(self.county) + '\r\n')
-		f.write('%0.12f' % (self.lonmin)+"\t"+'%0.12f' % (self.lonmax) + '\r\n')
-		f.write('%0.12f' % (self.latmin)+"\t"+'%0.12f' % (self.latmax) + '\r\n')
-		f.write('%0.12e' % self.findMin()+"\t"+'%0.12e' % self.findMax() + '\r\n')
-		for j in range(0,self.county):
-			for i in range(0,self.countx):
-				f.write('%0.12e' % self.data[i*self.county+j]+'\t')
-			f.write('\r\n')
-		
-		f.close()
-		return
-
-	def getValue(self,lon,lat):
-		if(lon<self.lonmin or lon>self.lonmax):
-			return 0.
-		if(lat<self.latmin or lat>self.latmax):
-			return 0.
-		ci = int(floor((lon-self.lonmin)/self.dlon))
-		cj = int(floor((lat-self.latmin)/self.dlat))
-		ci1 = 0
-		ci2 = 0
-                cj1 = 0
-		cj2 = 0
-		
-		if ci == self.countx-1:
-			ci2 = ci
-			ci1 = ci-1
-		else:
-			ci1 = ci
-			ci2 = ci+1
-	    
-		if cj == self.county-1:
-			cj2 = cj
-			cj1 = cj-1
-		else:
-			cj1 = cj
-			cj2 = cj+1
-		
-		f11 = self.data[ci1*self.county+cj1] #+ -
-		f21 = self.data[ci2*self.county+cj1] #+ -
-
-		f12 = self.data[ci1*self.county+cj2] #- +
-		f22 = self.data[ci2*self.county+cj2] #- +
-		
-		
-		x1 = self.lonmin+self.dlon*ci1
-		x2 = self.lonmin+self.dlon*ci2
-		y1 = self.latmin+self.dlat*cj1
-		y2 = self.latmin+self.dlat*cj2
-		
-		fy1=(f21-f11)/(x2-x1)*lon+(f11-(f21-f11)/(x2-x1)*x1)
-
-		fy2=(f22-f12)/(x2-x1)*lon+(f12-(f22-f12)/(x2-x1)*x1)
-
-		v = (fy2-fy1)/(y2-y1)*lat+(fy1-(fy2-fy1)/(y2-y1)*y1)
-		return  v
-	
-	def angleOf(self,dX,dY):
-		dFi = 0.0
-		dR = sqrt(fabs(dX*dX+dY*dY));
-		if (fabs(dR) > 0):
-			dFi  = acos(dX/dR);
-		if (dX <= 0 and dY < 0):
-			dFi  = 2.0*pi - dFi;
-		if (dX >  0 and dY < 0):
-			dFi  = 2.0*pi - dFi;
-		return dFi
 def sumGridForDose(*args):
 	if len(args) == 0:
 		return None
@@ -251,7 +150,9 @@ def addTextToTablesCell(cell,text,alignment = WD_ALIGN_PARAGRAPH.LEFT):
    	p1.alignment = alignment
 	p1.add_run(text, style = 'name-of-ch_t-style')
 
-def addSingleTable(document,scenario,mainTitle,multiplier,*args):
+def addSingleTable(document,scenario,mainTitle,multiplier,separate, *args):
+	if separate:
+			document = setDocumentStyle()
 	global tablesCounter	
 	tablesCounter = tablesCounter + 1
 	p = document.add_paragraph('', style='name-of-p-style')
@@ -269,21 +170,34 @@ def addSingleTable(document,scenario,mainTitle,multiplier,*args):
 	vals = []
 	for pos,arg in enumerate(args):
 		vals.append(prepareNew(arg[0]))
-
+	row_cells = []
 	for pointId, point in enumerate(pointsForAnalysis):
-    		row_cells = table.add_row().cells
-		delete_paragraph(row_cells[0].paragraphs[-1])		
-		addTextToTablesCell(row_cells[0],point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+"; "+format(point[2], '.6f').replace('.', ',')+"; "+format(point[3], '.1f').replace('.', ',')+")")
+		for iid, i in enumerate(listOfConInt):
+			#print pointId, iid 
+			row_cells.append(table.add_row().cells)
+		#print row_cells
+		col_cells = table.column_cells(1)
+		a = table.cell(pointId*len(listOfConInt)+1, 0)
+		b = table.cell((pointId+1)*len(listOfConInt), 0)
+		#print pointId*len(listOfConInt), (pointId+1)*len(listOfConInt)
+		A = a.merge(b)
+		delete_paragraph(row_cells[pointId*len(listOfConInt)][0].paragraphs[-1])		
+		addTextToTablesCell(row_cells[pointId*len(listOfConInt)][0],point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+"; "+format(point[2], '.6f').replace('.', ',')+"; "+format(point[3], '.1f').replace('.', ',')+")")
+		#print "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 		for pos,val in enumerate(vals):
-			delete_paragraph(row_cells[pos+1].paragraphs[-1])	
-			for num in range(len(listOfConInt)):
-				addTextToTablesCell(row_cells[pos+1],format(getValueForConfidence(pointId,val, float(listOfConInt[num]))*multiplier, '.2E').replace('.', ','), WD_ALIGN_PARAGRAPH.CENTER)
+			
+			for jjd, j in enumerate(listOfConInt):	
+				delete_paragraph(row_cells[pointId*len(listOfConInt)+jjd][pos+1].paragraphs[-1])
+				addTextToTablesCell(row_cells[pointId*len(listOfConInt)+jjd][pos+1],format(getValueForConfidence(pointId,val, float(listOfConInt[jjd]))*multiplier, '.2E').replace('.', ','), WD_ALIGN_PARAGRAPH.CENTER)
 	
 	document.add_page_break()	
-
+	if separate == True:
+		document.save(oFileFolder+'/appendix1_{}.docx'.format(tablesCounter))
 	return 
 
-def addComplexTable(document,scenario,mainTitle,multiplier,t1,t2,t3,t4,t5,t6,t7,t8):
+def addComplexTable(document,scenario,mainTitle,multiplier,separate, t1,t2,t3,t4,t5,t6,t7,t8):
+	if separate:
+			document = setDocumentStyle()
 	global tablesCounter	
 	tablesCounter = tablesCounter + 1
 	p = document.add_paragraph('', style='name-of-p-style')
@@ -349,16 +263,25 @@ def addComplexTable(document,scenario,mainTitle,multiplier,t1,t2,t3,t4,t5,t6,t7,
 	vals.append(prepareNew(t6[0]))
 	vals.append(prepareNew(t7[0]))
 	vals.append(prepareNew(t8[0]))
-
+	row_cells = []
 	for pointId, point in enumerate(pointsForAnalysis):
-    		row_cells = table.add_row().cells
-		delete_paragraph(row_cells[0].paragraphs[-1])		
-		addTextToTablesCell(row_cells[0],point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+"; "+format(point[2], '.6f').replace('.', ',')+"; "+format(point[3], '.1f').replace('.', ',')+")")
+		for iid, i in enumerate(listOfConInt):
+			#print pointId, iid 
+			row_cells.append(table.add_row().cells)
+		#print row_cells
+		col_cells = table.column_cells(0)
+		a = table.cell(pointId*len(listOfConInt)+2, 0)
+		b = table.cell((pointId+1)*len(listOfConInt)+1, 0)
+		#print pointId*len(listOfConInt), (pointId+1)*len(listOfConInt)
+		A = a.merge(b)
+		delete_paragraph(row_cells[pointId*len(listOfConInt)][0].paragraphs[-1])		
+		addTextToTablesCell(row_cells[pointId*len(listOfConInt)][0],point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+"; "+format(point[2], '.6f').replace('.', ',')+"; "+format(point[3], '.1f').replace('.', ',')+")")
 		for pos,val in enumerate(vals):
-			delete_paragraph(row_cells[pos+1].paragraphs[-1])
-			for num in range(len(listOfConInt)):
-				addTextToTablesCell(row_cells[pos+1],format(getValueForConfidence(pointId,val, float(listOfConInt[num]))*multiplier, '.2E').replace('.', ','), WD_ALIGN_PARAGRAPH.CENTER)
-
+			for jjd, j in enumerate(listOfConInt):
+				delete_paragraph(row_cells[pointId*len(listOfConInt)+jjd][pos+1].paragraphs[-1])
+				addTextToTablesCell(row_cells[pointId*len(listOfConInt)+jjd][pos+1],format(getValueForConfidence(pointId,val, float(listOfConInt[jjd]))*multiplier, '.2E').replace('.', ','), WD_ALIGN_PARAGRAPH.CENTER)
+	if separate == True:
+		document.save(oFileFolder+'/appendix1_{}.docx'.format(tablesCounter))
 	return 
 def writeOrgans(ws, *args):
 	global shift
@@ -374,6 +297,7 @@ def createTable1(scenario, separate, createNew):
 	_TESTES = sumGridForDoseNew("f16","f17")
 	_THYROID = sumGridForDoseNew("f18","f19")
 	_FOETUS = sumGridForDoseNew("f3","f7")
+	
 	wb = None
 	if separate:
 		wb = openpyxl.Workbook()
@@ -388,6 +312,7 @@ def createTable1(scenario, separate, createNew):
 		else:
 			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
 			ws = wb.worksheets[0]
+			
 	startCol = 1; endCol = 6; sratrRow = 1+shift; endRow = 1+shift
 	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:F1')
 	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 1 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет внешнего облучения от облака и от выпадений на поверхность земли (взвешенные по ОБЭ дозы за первые 10 ч), Гр. scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
@@ -406,13 +331,10 @@ def createTable1(scenario, separate, createNew):
 	ws.cell(row = 3+shift, column = 4, value = u'гонады')
 	ws.cell(row = 3+shift, column = 5, value = u'щитовидная железа')
 	ws.cell(row = 3+shift, column = 6, value = u'плод')
+	
 	organs = 5
-#	for pointId, point in enumerate(pointsForAnalysis):
-#		for i in range(0, organs):
-#			ws.cell(row=4+pointId, column=2+i, value="")
-#			ws.cell(row=4+pointId, column=2+i, column=2).number_format = '0.00E+00'
-#	first = True	
 	curPos = 4
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -426,6 +348,7 @@ def createTable1(scenario, separate, createNew):
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
+			
 	if separate:		
 		wb.save(oFileFolder+"/Table1.xlsx")
 	else:
@@ -449,6 +372,7 @@ def createTable2(scenario, separate, createNew):
 	_UPPER_LARGE_INTESTINE_WALL = maxGridForDoseNew("f61")
 	_LOWER_LARGE_INTESTINE_WALL = maxGridForDoseNew("f69")
 	_FOETUS = maxGridForDoseNew("f2")
+	
 	wb = None
 	if separate:
 		wb = openpyxl.Workbook()
@@ -484,6 +408,7 @@ def createTable2(scenario, separate, createNew):
 	
 	organs = 5
 	curPos = 4
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -493,6 +418,7 @@ def createTable2(scenario, separate, createNew):
 			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=5, value=0.57*getValueForConfidence(pointId,_UPPER_LARGE_INTESTINE_WALL, float(ConInt)) + 0.43*getValueForConfidence(pointId,_LOWER_LARGE_INTESTINE_WALL, float(ConInt)) )
 			ws.cell(row=curPos+ConIntId+pointId*len(listOfConInt)+shift, column=6, value=getValueForConfidence(pointId,_FOETUS, float(ConInt)))
 	shift = shift + curPos+ConIntId+pointId*len(listOfConInt)+2
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
@@ -501,7 +427,6 @@ def createTable2(scenario, separate, createNew):
 		wb.save(oFileFolder+"/Table2.xlsx")
 	else:
 		wb.save(oFileFolder+"/Table.xlsx")
-	
 	
 	del _RED_MARROW[:]
 	del _THYROID[:]
@@ -534,6 +459,7 @@ def createTable3(scenario, separate, createNew):
 		else:
 			wb = load_workbook(filename = oFileFolder+"/Table.xlsx")
 			ws = wb.worksheets[0]
+			
 	startCol = 1; endCol = 5; sratrRow = 1+shift; endRow = 1+shift
 	ws.merge_cells(start_row=sratrRow, start_column=startCol, end_row=endRow, end_column=endCol) #('A1:E1')
 	ws.cell(row = sratrRow, column = startCol,  value = u'Таблица 3 – Прогнозируемые дозы с уровнями доверия varSeries процентов за счет: внутреннего облучения от ингаляционного поступления радионуклидов для детей (взвешенные по ОБЭ дозы по внутреннему пути облучения за период 30 суток), Гр . scenario'.replace("scenario",scenario).replace("varSeries", nameConfInt))
@@ -548,7 +474,6 @@ def createTable3(scenario, separate, createNew):
 
 	writeOrgans(ws, u'красный костный мозг', u'щитовидная железа', u'легкие', u'толстый кишечник')
 
-	
 	organs = 4
 	curPos = 4
 	for pointId, point in enumerate(pointsForAnalysis):
@@ -617,6 +542,7 @@ def createTable4(scenario, separate, createNew):
 	
 	organs = 5
 	curPos = 4
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -631,11 +557,11 @@ def createTable4(scenario, separate, createNew):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
 	
-	
 	if separate:		
 		wb.save(oFileFolder+"/Table4.xlsx")
 	else:
 		wb.save(oFileFolder+"/Table.xlsx")
+		
 	del _RED_MARROW[:]
 	del _THYROID[:]
 	del _LUNGS[:]
@@ -688,6 +614,7 @@ def createTable5(scenario, separate, createNew):
 	
 	organs = 7
 	curPos = 4
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -703,7 +630,6 @@ def createTable5(scenario, separate, createNew):
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
-	
 	
 	if separate:		
 		wb.save(oFileFolder+"/Table5.xlsx")
@@ -764,6 +690,7 @@ def createTable6(scenario, separate, createNew):
 	
 	organs = 7
 	curPos = 4
+	
 	for pointId, point in enumerate(pointsForAnalysis):	
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -779,7 +706,6 @@ def createTable6(scenario, separate, createNew):
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
-	
 	
 	if separate:		
 		wb.save(oFileFolder+"/Table6.xlsx")
@@ -831,6 +757,7 @@ def createTable7(scenario, separate, createNew):
 	
 	organs = 5
 	curPos = 3
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -891,6 +818,7 @@ def createTable8(scenario, separate, createNew):
 	
 	organs = 3
 	curPos = 3
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws.cell(row = curPos+pointId*len(listOfConInt)+shift, column = 1, value = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")")
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -901,7 +829,6 @@ def createTable8(scenario, separate, createNew):
 	for pointId, point in enumerate(pointsForAnalysis):
 		for i in range(0, organs):
 			ws.cell(row=curPos+pointId, column=2+i).number_format = '0.00E+00'
-	
 	
 	if separate:		
 		wb.save(oFileFolder+"/Table8.xlsx")
@@ -944,6 +871,7 @@ def createTable9(createNew, scenario,milk_plants_meat = [0.0]*3):
 	
 	organs = 3
 	curPos = 3
+	
 	for pointId, point in enumerate(pointsForAnalysis):
 		ws['A'+str(curPos+pointId*len(listOfConInt)+shift)] = point[0]+" ("+ format(point[1], '.6f').replace('.', ',')+";"+format(point[2], '.6f').replace('.', ',')+";"+format(point[3], '.1f').replace('.', ',')+")"
 		for  ConIntId, ConInt in enumerate(listOfConInt):
@@ -1012,7 +940,31 @@ def createTable10(scenario, separate, createNew):
 	del _FALLOUT[:]
 	del _TIC[:]
 	return
-
+def setDocumentStyle():
+	document = Document()
+	my_styles = document.styles	
+	
+	p_style = my_styles.add_style('name-of-p-style', WD_STYLE_TYPE.PARAGRAPH)
+	p_style.base_style = my_styles['Normal']
+	p_style.paragraph_format.space_before = Pt(0)
+	p_style.paragraph_format.space_after = Pt(10)
+	
+	ch_style = my_styles.add_style('name-of-ch-style', WD_STYLE_TYPE.CHARACTER)
+	ch_style.base_style = my_styles['Default Paragraph Font']
+	ch_style.font.name = 'Times New Roman'
+	ch_style.font.size = Pt(12)
+	
+	t_style = my_styles.add_style('name-of-t-style', WD_STYLE_TYPE.PARAGRAPH)
+	t_style.base_style = my_styles['Normal']
+	t_style.paragraph_format.space_before = Pt(0)
+	t_style.paragraph_format.space_after = Pt(10)
+	
+	ch_style = my_styles.add_style('name-of-ch_t-style', WD_STYLE_TYPE.CHARACTER)
+	ch_style.base_style = my_styles['Default Paragraph Font']
+	ch_style.font.name = 'Times New Roman'
+	ch_style.font.size = Pt(8)
+	document.add_heading(u'Приложение 1. Расчетные значения базовых функционалов в населенных пунктах', 0)
+	return document
 def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOfConInt, separate):
 	mypath=os.path.dirname(os.path.realpath( __file__ ))
 	os.chdir(mypath)
@@ -1038,39 +990,19 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	nameConfInt = nameConfInt.decode('utf-8')
 	#print nameConfInt
 	if oFileType == "docx":
-		document = Document()
-		my_styles = document.styles	
-	
-		p_style = my_styles.add_style('name-of-p-style', WD_STYLE_TYPE.PARAGRAPH)
-		p_style.base_style = my_styles['Normal']
-		p_style.paragraph_format.space_before = Pt(0)
-		p_style.paragraph_format.space_after = Pt(10)
-	
-		ch_style = my_styles.add_style('name-of-ch-style', WD_STYLE_TYPE.CHARACTER)
-		ch_style.base_style = my_styles['Default Paragraph Font']
-		ch_style.font.name = 'Times New Roman'
-		ch_style.font.size = Pt(12)
-	
-		t_style = my_styles.add_style('name-of-t-style', WD_STYLE_TYPE.PARAGRAPH)
-		t_style.base_style = my_styles['Normal']
-		t_style.paragraph_format.space_before = Pt(0)
-		t_style.paragraph_format.space_after = Pt(10)
-	
-		ch_style = my_styles.add_style('name-of-ch_t-style', WD_STYLE_TYPE.CHARACTER)
-		ch_style.base_style = my_styles['Default Paragraph Font']
-		ch_style.font.name = 'Times New Roman'
-		ch_style.font.size = Pt(8)
-	
-		document.add_heading(u'Приложение 1. Расчетные значения базовых функционалов в населенных пунктах', 0)
-	
+
+		document = setDocumentStyle()
+		
 		scenario = u"Полное обесточивание без управления"
 		mainTitle = u"Расчетные плотность поверхностных выпадений и проинтегрированная по времени концентрация с уровнями доверия varSeries процентов".replace("varSeries", nameConfInt)
 		multiplier = 1.0
-		addSingleTable(document,scenario,mainTitle,multiplier,["f0",u'Плотность поверхностных выпадений, Бк/кв.м.'],["f1",u'Проинтегрированная по времени концентрация, Бк·с/кб.м.'])		
+		addSingleTable(document,scenario,mainTitle,multiplier,separate, ["f0",u'Плотность поверхностных выпадений, Бк/кв.м.'],["f1",u'Проинтегрированная по времени концентрация, Бк·с/кб.м.'])		
+		
 		
 		mainTitle = u"Расчетная эквивалентная доза облучения на плод с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addSingleTable(document,scenario,mainTitle,multiplier,["f2",u'Ингаляция'],\
+		addSingleTable(document,scenario,mainTitle,multiplier,separate,\
+									["f2",u'Ингаляция'],\
 									["f3",u'Внешнее облучение от проходящего облака'],\
 									["f4",u'Внешнее облучения от поверхностных выпадений (год)'],\
 									["f5",u'Внешнее облучения от поверхностных выпадений (7 суток)'],\
@@ -1081,7 +1013,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 		
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 10 часов с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addSingleTable(document,scenario,mainTitle,multiplier,["f10",u'На красный костный мозг за счет внешнего облучения от проходящего облака'],\
+		addSingleTable(document,scenario,mainTitle,multiplier,separate, \
+									["f10",u'На красный костный мозг за счет внешнего облучения от проходящего облака'],\
 									["f11",u'На красный костный мозг за счет внешнего облучения от поверхностных выпадений'],\
 									["f12",u'На легкие за счет внешнего облучения от проходящего облака'],\
 									["f13",u'На легкие за счет внешнего облучения от поверхностных выпадений'],\
@@ -1094,12 +1027,13 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 		
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 1 день на красный костный мозг за счет внешнего облучения с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addSingleTable(document,scenario,mainTitle,multiplier,["f20",u'От проходящего облака'],["f21",u'От поверхностных выпадений'])		
+		addSingleTable(document,scenario,mainTitle,multiplier,separate, ["f20",u'От проходящего облака'],["f21",u'От поверхностных выпадений'])		
 		
 	
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 30 суток на все тело с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f22",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f22",u'От проходящего облака'],\
 									["f23",u'От поверхностных выпадений'],\
 									["f24",u'На новорожденных'],\
 									["f25",u'На детей 1-2 года'],\
@@ -1110,7 +1044,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 30 суток на красный костный мозг с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f30",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f30",u'От проходящего облака'],\
 									["f31",u'От поверхностных выпадений'],\
 									["f32",u'На новорожденных'],\
 									["f33",u'На детей 1-2 года'],\
@@ -1121,7 +1056,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 30 суток на легкие с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f38",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f38",u'От проходящего облака'],\
 									["f39",u'От поверхностных выпадений'],\
 									["f40",u'На новорожденных'],\
 									["f41",u'На детей 1-2 года'],\
@@ -1132,7 +1068,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 30 суток на щитовидную железу с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f46",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f46",u'От проходящего облака'],\
 									["f47",u'От поверхностных выпадений'],\
 									["f48",u'На новорожденных'],\
 									["f49",u'На детей 1-2 года'],\
@@ -1143,7 +1080,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 30 суток на верхнюю часть толстого кишечника с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f54",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f54",u'От проходящего облака'],\
 									["f55",u'От поверхностных выпадений'],\
 									["f56",u'На новорожденных'],\
 									["f57",u'На детей 1-2 года'],\
@@ -1154,7 +1092,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 		
 		mainTitle = u"Расчетная ОБЭ - взвешенная поглощенная доза за 30 суток на нижнюю часть толстого кишечника с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f62",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f62",u'От проходящего облака'],\
 									["f63",u'От поверхностных выпадений'],\
 									["f64",u'На новорожденных'],\
 									["f65",u'На детей 1-2 года'],\
@@ -1165,7 +1104,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на все тело с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f70",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f70",u'От проходящего облака'],\
 									["f71",u'От поверхностных выпадений'],\
 									["f72",u'На новорожденных'],\
 									["f73",u'На детей 1-2 года'],\
@@ -1176,7 +1116,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на красный костный мозг с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f78",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f78",u'От проходящего облака'],\
 									["f79",u'От поверхностных выпадений'],\
 									["f80",u'На новорожденных'],\
 									["f81",u'На детей 1-2 года'],\
@@ -1187,7 +1128,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на легкие с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f86",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f86",u'От проходящего облака'],\
 									["f87",u'От поверхностных выпадений'],\
 									["f88",u'На новорожденных'],\
 									["f89",u'На детей 1-2 года'],\
@@ -1198,7 +1140,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на кожу с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f94",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f94",u'От проходящего облака'],\
 									["f95",u'От поверхностных выпадений'],\
 									["f96",u'На новорожденных'],\
 									["f97",u'На детей 1-2 года'],\
@@ -1209,7 +1152,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на щитовидную железу с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f102",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f102",u'От проходящего облака'],\
 									["f103",u'От поверхностных выпадений'],\
 									["f104",u'На новорожденных'],\
 									["f105",u'На детей 1-2 года'],\
@@ -1220,7 +1164,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на яичники с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f110",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f110",u'От проходящего облака'],\
 									["f111",u'От поверхностных выпадений'],\
 									["f112",u'На новорожденных'],\
 									["f113",u'На детей 1-2 года'],\
@@ -1231,7 +1176,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на семенники с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f118",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f118",u'От проходящего облака'],\
 									["f119",u'От поверхностных выпадений'],\
 									["f120",u'На новорожденных'],\
 									["f121",u'На детей 1-2 года'],\
@@ -1242,7 +1188,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная поглощенная доза за 2 суток на тонкий кишечник с уровнями доверия varSeries процентов, мГр".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f126",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f126",u'От проходящего облака'],\
 									["f127",u'От поверхностных выпадений'],\
 									["f128",u'На новорожденных'],\
 									["f129",u'На детей 1-2 года'],\
@@ -1253,7 +1200,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эффективная доза за 10 суток с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f134",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f134",u'От проходящего облака'],\
 									["f135",u'От поверхностных выпадений'],\
 									["f136",u'На новорожденных'],\
 									["f137",u'На детей 1-2 года'],\
@@ -1264,7 +1212,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на красный костный мозг с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f142",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f142",u'От проходящего облака'],\
 									["f143",u'От поверхностных выпадений'],\
 									["f144",u'На новорожденных'],\
 									["f145",u'На детей 1-2 года'],\
@@ -1275,7 +1224,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на легкие с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f150",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f150",u'От проходящего облака'],\
 									["f151",u'От поверхностных выпадений'],\
 									["f152",u'На новорожденных'],\
 									["f153",u'На детей 1-2 года'],\
@@ -1286,7 +1236,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 		
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на кожу с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f158",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f158",u'От проходящего облака'],\
 									["f159",u'От поверхностных выпадений'],\
 									["f160",u'На новорожденных'],\
 									["f161",u'На детей 1-2 года'],\
@@ -1297,7 +1248,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на щитовидную железу с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f166",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f166",u'От проходящего облака'],\
 									["f167",u'От поверхностных выпадений'],\
 									["f168",u'На новорожденных'],\
 									["f169",u'На детей 1-2 года'],\
@@ -1308,7 +1260,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на яичники с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f174",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f174",u'От проходящего облака'],\
 									["f175",u'От поверхностных выпадений'],\
 									["f176",u'На новорожденных'],\
 									["f177",u'На детей 1-2 года'],\
@@ -1319,7 +1272,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на семенники с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f182",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f182",u'От проходящего облака'],\
 									["f183",u'От поверхностных выпадений'],\
 									["f184",u'На новорожденных'],\
 									["f185",u'На детей 1-2 года'],\
@@ -1330,7 +1284,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетная эквивалентная доза за 10 суток на тонкий кишечник с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addComplexTable(document,scenario,mainTitle,multiplier,["f190",u'От проходящего облака'],\
+		addComplexTable(document,scenario,mainTitle,multiplier,separate, \
+									["f190",u'От проходящего облака'],\
 									["f191",u'От поверхностных выпадений'],\
 									["f192",u'На новорожденных'],\
 									["f193",u'На детей 1-2 года'],\
@@ -1341,7 +1296,8 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 	
 		mainTitle = u"Расчетные эффективная и эквивалентная дозы за счет внешнего облучения с уровнями доверия varSeries процентов, мЗв".replace("varSeries", nameConfInt)
 		multiplier = 1000.0
-		addSingleTable(document,scenario,mainTitle,multiplier,["f198",u'За 7 суток за счет внешнего облучения от проходящего облака'],\
+		addSingleTable(document,scenario,mainTitle,multiplier,separate, \
+									["f198",u'За 7 суток за счет внешнего облучения от проходящего облака'],\
 									["f199",u'За 7 суток за счет внешнего облучения от поверхностных выпадений'],\
 									["f200",u'За 7 суток на щитовидную железу за счет внешнего облучения от проходящего облака'],\
 									["f201",u'За 7 суток на щитовидную железу за счет внешнего облучения от поверхностных выпадений'],\
@@ -1349,8 +1305,9 @@ def main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType, pathToNP, listOf
 									["f203",u'За 30 суток за счет внешнего облучения от поверхностных выпадений'],\
 									["f204",u'За год за счет внешнего облучения от проходящего облака'],\
 									["f205",u'За год за счет внешнего облучения от поверхностных выпадений'])
-	
-		document.save(oFileFolder+'/appendix1.docx')
+
+		if separate == False:
+			document.save(oFileFolder+'/appendix1.docx')
 	elif oFileType == "xlsx":
 		scenario = u"Полное обесточивание без управления"
 		createNew = True
@@ -1408,7 +1365,8 @@ if __name__ == "__main__":
 			float(i)
 		except ValueError:
 			err = True
-
+	if separate == None:
+		separate = False
 	if err == False:
 		sys.exit(main(iFileFolder,  oFileFolder, oPrefixFileName, oFileType,pathToNP,  listOfConInt, separate))
 	else:
