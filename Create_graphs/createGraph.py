@@ -76,8 +76,6 @@ except ImportError:
 
 
 
-
-
 srcPosLon = 0.0
 srcPosLat = 0.0
 
@@ -88,30 +86,48 @@ axeRadius = [0.0,0.2,0.4,0.6,0.8,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.0,12.0,1
 
 
 	
-def labelsAxis(gridfil, dist, toSrc, axisCount, delta):
-	labels = []
-	aa = np.arange(-(toSrc//delta)*delta, ((dist-toSrc)//delta)*delta+1, delta)  #Подписи осей +1 для того, чтобы учесть границу 
+def labelsAxis(gridfil, dist, toSrc, axisCount, delta): #gridfil - экземпляр класса GRN_2D, dist - ширина или длина области, toSrc - расстояние от начала оси до источника в километрах, delta - цена деления оси
+	
+	#Строим массив значений подписей осей, которые укладываются в целое число delta, +1 для того, чтобы учесть границу
+	aa = np.arange(-(toSrc//delta)*delta, ((dist-toSrc)//delta)*delta+1, delta)  
+
+	
+	#Добавляем границы справа и слева, которые не попали
 	axisArr=np.append([-toSrc], aa)
-	axisArr=np.append(axisArr, int(dist-toSrc))
-	#print axisArr, len(axisArr)
+	axisArr=np.append(axisArr, (dist-toSrc))
+	#Добавили
+	
+
+	#Вычисляем остатки справа и слева, тк у нас не целое число delta умещается, делим на dist, чтобы получить относительные остатки
 	left=(toSrc%delta)/dist
 	right=((dist-toSrc)%delta)/dist
+	#Вычислили
+
+	#Вычисляем длину остатков, относительно количества интервалов по осям
 	valLeft=(axisCount-1)*left
 	valRight=(axisCount-1)*right
-	delx=delta/((toSrc//delta)*delta+((dist-toSrc)//delta)*delta+1)*(axisCount-1-valLeft-valRight)
-	#print left, valLeft, right,valRight, delx
+	#Вычислили
+	
+	#Вычисляем дельту, только уже не в километрах, а в интервалах
+	cutlength = (axisCount-1-valLeft-valRight) #Обрезаем длину по интервалам(минусуем остатки)
+	delx=delta/((toSrc//delta)*delta+((dist-toSrc)//delta)*delta)*cutlength
+	#Вычислили
+	
+	#Строим массив значений, на который потом накладываем подписи
 	val=np.array([])
-	val = np.append([0.0], np.arange(valLeft, axisCount, delx)) #Значения осей
-	val = np.append( val, val[len(val)-1]+valRight)
-	val[len(val)-1]=axisCount-1
-	#print np.arange(left, axisCount, delx)
-	#print val, len(val)
-	#print axisArr
+	val = np.append([0.0], np.arange(valLeft, axisCount, delx)) #Записываем значения осей в интервалах
+	val = np.append( val, val[len(val)-1]+valRight) #Добавляем границу справа
+	val[len(val)-1]=axisCount-1 #На всякий случай меняем вычисленную границу справа на всю длину интервалов
+	#Построили
+	
+	#Строим список подписей
+	labels = []
 	for n, i in enumerate(axisArr):
 		if n==0 or n==len(axisArr)-1:
 			labels.append('') #Убираем подписи на границах
 			continue			
 		labels.append('%d' % i)
+	#Построили
 	return labels, val
 def create2D(obj):
 	result = [[0.0]*obj.county]*obj.countx
@@ -130,7 +146,7 @@ def sortByLength(inputStr):
 			return int(inputStr.split("_")[3]) #Если папки с названиями вида Mayak_local_100_0_10_0; Mayak_local_100_7200_10_1....
 		except ValueError:
 			print "Определите в имени папок позицию для сортировки."
-def readTrackAxis(plt, fil, pathToAxis, funcId):
+def readTrackAxis(plt, fil, pathToAxis, funcId, maxValAxis, notAddAxisPoints):
 	global axeRadius
 	f = None
 	try:
@@ -146,40 +162,63 @@ def readTrackAxis(plt, fil, pathToAxis, funcId):
 	tmpVal = 0.0
 	tmpDist = 0.0
 	oldVal = 0.0
-	
+	first = True
 	for lineId, line in enumerate(lst2):
 		if float(axeRadius[lineId])>=37.0:
 			continue
+		if maxValAxis == 0.0:
+			tmpDist = 0.0
+			break
 		
 		lon, lat, dist, val = float(line.split(";")[0]), float(line.split(";")[1]), float(line.split(";")[2]), float(line.split(";")[3])
-		axeMaxPoints.append([(lon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx), (lat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county)])
-		plt.scatter((lon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx), (lat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county))
+
 		#print (lon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx), (lat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county), "x", fil.countx, "y", fil.county
-		if oldVal > 0.1:#val>tmpVal:
+		if oldVal > maxValAxis:#val>tmpVal:
 			tmpVal = val
 			tmpDist = dist	
-		oldVal = val		
+		oldVal = val
+		
+		if notAddAxisPoints == True:
+			pass
+		else:	
+			axeMaxPoints.append([(lon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx), (lat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county)])
+			if first:
+				plt.scatter((lon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx-1), (lat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county-1), label= 'Track axis points')
+				first = False
+				
+			else:
+				plt.scatter((lon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx-1), (lat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county-1))
 	
 	del axeMaxPoints [:]
 	if oldVal == 0.0:
 		tmpVal, tmpDist = 0.0, 0.0
 	return tmpVal, tmpDist
 	
-def createGraph(fil, oFileFolder, oFileType, funcId, directotyId, Scale, pathToAxis, radii):
+def createGraph(fil, oFileFolder, oFileType, funcId, directotyId, Scale, pathToAxis, radii, maxValAxis, notAddAxisPoints, addSrcPoint, addColorbar, addLegend, bg):
 	global oxToSrc, oyToSrc
+	
+	#Устанавливаем параметры, нужные для легенды
+	if addLegend == True:
+		rborder = 0.75
+		rcParams['figure.subplot.right'] = rborder
+		rcParams['figure.subplot.hspace'] = 0.15
+		rcParams['figure.subplot.wspace'] = 0.15
+		
+	#Создаем 2Д массив
 	resArray = create2D(fil)
+	
+	#Устанавливаем позицию источника
 	# g = geod.Inverse(lat1, lon1, lat2, lon2) distance between lat1;lon1 and lat2, lon2
-	g = geod.Inverse(fil.latmin, fil.lonmin, fil.latmax, fil.lonmin)#расстояние между ними
-	length= g['s12']/1000.0
+	glength = geod.Inverse(fil.latmin, fil.lonmin, fil.latmax, fil.lonmin)#расстояние между ними
+	length= glength['s12']/1000.0
 	gwidth = geod.Inverse(srcPosLat, fil.lonmin, srcPosLat, fil.lonmax)
 	width=(gwidth['s12'])/1000.0
-	oxToSrc=(geod.Inverse(srcPosLat,  fil.lonmin, srcPosLat, srcPosLon)['s12']/1000.0) #Позиция источника по х в километрах
-	oyToSrc=(geod.Inverse(fil.latmin,  srcPosLon, srcPosLat, srcPosLon)['s12']/1000.0) #Позиция источника по у в километрах
-	print oxToSrc, oyToSrc, "src, km"
-	print width-oxToSrc, length-oyToSrc, "src, km"
+	oxToSrc=geod.Inverse(srcPosLat,  fil.lonmin, srcPosLat, srcPosLon)['s12']/1000.0 #Позиция источника по х в километрах
+	oyToSrc=geod.Inverse(fil.latmin,  srcPosLon, srcPosLat, srcPosLon)['s12']/1000.0 #Позиция источника по у в километрах
+
 	fig = plt.figure()
 	ax1 = fig.add_subplot(111)
-	img = Image.open('bg.png')  #Фон
+	img = Image.open(bg)  #Фон
 	ax1.imshow(img, extent=[0, fil.countx-1, 0, fil.county-1]) #Разбиваем фон на нужное число точек
 	x = np.arange (0,fil.countx, 1)
 	y = np.arange (0,fil.county, 1)
@@ -190,39 +229,60 @@ def createGraph(fil, oFileFolder, oFileType, funcId, directotyId, Scale, pathToA
 	contour = ax1.contour(xgrid, ygrid, resArray, levels,  colors=c) #Строит изолинии
 	#plt.clabel(contour, colors = 'k', fmt = '%2.4f', fontsize=12) #Для подписей значений на изолиниях
 	contour_filled = ax1.contourf(xgrid, ygrid, resArray, levels, colors=c, alpha=0.5) #Закрашивает области внутри изолиний цветом самих изолиний
-	plt.colorbar(contour_filled, alpha= 0, format = '%2.5f')  # Показывает соответствие цвета и значения
-	plt.xlabel(u'x (км)')
-	plt.ylabel(u'y (км)') 	
+	proxy = [plt.Rectangle((0,0),1,1,fc = pc.get_facecolor()[0]) for pc in contour_filled.collections]
+	if addColorbar == True:
+		plt.colorbar(contour_filled, alpha= 0, format = '%2.5f')  # Показывает соответствие цвета и значения
+		
+	#Добавляем название осей
+	plt.xlabel(u'x (км)') #Подпись оси х
+	plt.ylabel(u'y (км)') #Подпись оси у
 	
-	
-	print length, width
-	print 10.0/length, 10.0/width
-	print 
+	#Ограничиваем область графика
 	pylab.xlim (0, fil.countx-1) #Ограничение области рисования x
 	pylab.ylim (0, fil.county-1) #Ограничение области рисования y
-	plt.scatter(49.5, 49.5)
-	colour = ["red", "purple", "brown", "black", "pink", "green"]
+	
+	colour = [ "purple", "brown", "black", "pink","white", "green"]
+
+	
+	#Добавляем на график круги 
 	if radii != []:
 		for rId, r in enumerate(radii):
 			dist = float(r)
-			ax1.add_patch(patches.Ellipse(( (srcPosLat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county),(srcPosLon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx)),dist/length*(fil.county)*2,dist/width*(fil.countx)*2 , hatch='/', fill=False,  edgecolor=colour[rId]))
-			print "Circle done with r=", dist
-		
+			ax1.add_patch(patches.Ellipse((oxToSrc/width*(fil.countx-1),oyToSrc/length*(fil.county-1)),dist/width*(fil.countx-1)*2 ,dist/length*(fil.county-1)*2, hatch='/', fill=False,  edgecolor=colour[rId], label="Circle with radius {} km".format(r)))
+			print "Circle done with r = ", dist
+			
+	#Добавляем на график ось слда
 	if pathToAxis != '':
-		val, dist = readTrackAxis(ax1, fil, pathToAxis, funcId)
-		ax1.add_patch(patches.Circle(( (srcPosLat-fil.latmin)/(fil.latmax-fil.latmin)*(fil.county),(srcPosLon-fil.lonmin)/(fil.lonmax-fil.lonmin)*(fil.countx)), dist/length*(fil.county-1), hatch='/', fill=False,  edgecolor="red"))
+		val, dist = readTrackAxis(ax1, fil, pathToAxis, funcId, maxValAxis, notAddAxisPoints)
+		ax1.add_patch(patches.Ellipse((oxToSrc/width*(fil.countx-1),oyToSrc/length*(fil.county-1)),dist/width*(fil.countx-1)*2 ,dist/length*(fil.county-1)*2, hatch='/', fill=False,  edgecolor='red', label="Circle with radius {} km".format(dist)))
 		print dist
+		
+	#Добавляем на рисунок заголовок
 	#ss=(u"Год ")+(time.strftime('%Y ', time.localtime(1451595600+int(directotyId)*7200)))+ (u"Месяц ")+(time.strftime('%m ', time.localtime(1451595600+int(directotyId)*7200)))+(u"День ")+(time.strftime('%d ', time.localtime(1451595600+int(directotyId)*7200)))+(u"Час ")+(time.strftime('%H ', time.localtime(1451595600+int(directotyId)*7200)))
-
 	#plt.title(ss)
+	
+	# Добавляем на график позицию источника
+	if addSrcPoint:
+		plt.scatter(oxToSrc/width*(fil.countx-1),oyToSrc/length*(fil.county-1), label="Source position", marker=(5, 1), c='red', s=100)
+		
+	#Добавляем на рисунок легенду
+	if addLegend == True:
+		#print proxy
+		#plt.legend(proxy, ["range(2-3)", "range(3-4)", "range(4-6)"], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., fontsize=8)
+		plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0., fontsize=8)
 
+		
+	#Устанавливаем подписи осей
+	#Ось Х
 	label, val = labelsAxis(fil, width, oxToSrc, fil.countx, int(delta))
 	ax1.set_xticks(val) #Устанавливаем значения по х
 	ax1.set_xticklabels(label)	#Ставим подписи по х
-
+	#Ось У
 	label, val = labelsAxis(fil, length, oyToSrc, fil.county, int(delta))
 	ax1.set_yticks(val) #Устанавливаем значения по у
 	ax1.set_yticklabels(label)	#Ставим подписи по у
+	
+	#Сохраняем рисунки
 	print  "Save in: ", oFileFolder, str(funcId)
 	try: 
 		os.makedirs(oFileFolder+"/Func_"+str(funcId))
@@ -251,7 +311,7 @@ def calcLevelsAndColours(Scale):
 		tmpLevels = Scale
 	return tmpLevels
 	
-def main(iFilePath, iFileType,  oFileFolder, oFileType, funcNum, delta, Scale, pathToConfigure, pathToAxis, radii):
+def main(iFilePath, iFileType,  oFileFolder, oFileType, funcNum, delta, Scale, pathToConfigure, pathToAxis, radii, maxValAxis, notAddAxisPoints, addSrcPoint, addColorbar, addLegend, bg):
 	global oxToSrc, oyToSrc, srcPosLon, srcPosLat
 	#Позиция источника
 	conf = ConfigParser.RawConfigParser()
@@ -261,7 +321,7 @@ def main(iFilePath, iFileType,  oFileFolder, oFileType, funcNum, delta, Scale, p
 	if iFileType == "grd":
 		for funcId in funcNum:
 			fil = readFromSurferGRD(iFilePath+"/f"+funcId+".grd")
-			createGraph(fil, oFileFolder, oFileType, funcId, funcId, Scale, pathToAxis, radii)
+			createGraph(fil, oFileFolder, oFileType, funcId, funcId, Scale, pathToAxis, radii, maxValAxis, notAddAxisPoints, addSrcPoint, addColorbar, addLegend, bg)
 			
 	elif iFileType == "nc" or iFileType == "xml":
 		dirs = os.listdir(iFilePath) #Считываем файлы в директории
@@ -291,7 +351,7 @@ def main(iFilePath, iFileType,  oFileFolder, oFileType, funcNum, delta, Scale, p
 					continue
 				fil.initById(dataset, int(funcId))
 				prop=fil.properties
-				createGraph(fil, oFileFolder, oFileType, funcId, directotyId, Scale, pathToAxis, radii)
+				createGraph(fil, oFileFolder, oFileType, funcId, directotyId, Scale, pathToAxis, radii, maxValAxis, notAddAxisPoints, addSrcPoint, addColorbar, addLegend, bg)
 	return 
 
 if __name__ == "__main__":
@@ -325,10 +385,10 @@ if __name__ == "__main__":
 	required = parser.add_argument_group('required arguments')
 	optional = parser.add_argument_group('optional arguments')
 	
-	required.add_argument('--iff', action = 'store', dest='iFileFolder',  type=str, help='path to the input folder with results in nostra output format', required=True)
-	required.add_argument('--iftype', choices=['xml', 'nc', 'grd'], dest='iFileType',  type=str, help='type of the input file with nostra results', required=True)
+	required.add_argument('--iff', action = 'store', dest='iFileFolder',  type=str, help='Path to the input folder with results in nostra output format', required=True)
+	required.add_argument('--iftype', choices=['xml', 'nc', 'grd'], dest='iFileType',  type=str, help='Type of the input file with nostra results', required=True)
 	required.add_argument ('-fn', nargs='+', dest='funcNum',help='Write space separated numbers of functions for output', required=True)
-	required.add_argument ('--configureFile', action=arghelper.checkAndPrepareF({'cfg'}), dest='pathToConfigure', metavar='FILE', type=lambda x: arghelper.is_valid_file(parser, x), help='path to file with settings', required=True)
+	required.add_argument ('--configureFile', action=arghelper.checkAndPrepareF({'cfg'}), dest='pathToConfigure', metavar='FILE', type=lambda x: arghelper.is_valid_file(parser, x), help='Path to file with settings', required=True)
 	
 	
 	optional.add_argument('--off', action = 'store', dest='oFileFolder',metavar='OUTPUT_FOLDER', type=lambda x: arghelper.is_valid_directory(parser, x), help='path to the output folder for output files', required=False, default=mypath)
@@ -339,6 +399,12 @@ if __name__ == "__main__":
 	optional.add_argument ('-usrscale', nargs='+', dest='usrScale',help='Write space separated value of functional(for example 10 100 150 200)', required=False, default=None)
 	optional.add_argument('--pathToAxis', action = 'store', dest='pathToAxis',  type=str, help='path to the folder with Track Axis', required=False, default="")
 	optional.add_argument ('-radii', nargs='+', dest='radii',help='Write space separated value of circle in km (max 6 values)', required=False, default=[])
+	optional.add_argument('--maxValAxis', action = 'store', dest='maxValAxis',  type=float, help='Value for circle for track Axis', default=0)
+	optional.add_argument ('-notAddAxisPoints', action='store_const', dest='notAddAxisPoints',help='Use this flag to remove Axis points from graph',  const=True)
+	optional.add_argument ('-addSrcPoint', action='store_const', dest='addSrcPoint',help='Use this flag to draw a source point on graph',  const=True)
+	optional.add_argument ('-addColorbar', action='store_const', dest='addColorbar',help='Use this flag to add colorbar on picture',  const=True)
+	optional.add_argument ('-addLegend', action='store_const', dest='addLegend',help='Use this flag to add legend on picture',  const=True)
+	optional.add_argument('--bg', action = 'store', dest='bg',  type=str, help='Path to the bachground for picture(default = ./bg.png)', required=False, default="bg.png")
 
 	args_new = parser.parse_args()
 	
@@ -353,6 +419,12 @@ if __name__ == "__main__":
 	iFileType = args_new.iFileType.strip()
 	oFileType = args_new.oFileType.strip()
 	pathToAxis = args_new.pathToAxis.strip()
+	maxValAxis = args_new.maxValAxis
+	notAddAxisPoints = args_new.notAddAxisPoints
+	addSrcPoint = args_new.addSrcPoint
+	addColorbar = args_new.addColorbar
+	addLegend = args_new.addLegend
+	bg = args_new.bg
 	
 	errFuncNum = errDelta = errLogScale = errUsrScale = errRadii = False
 	
@@ -400,7 +472,7 @@ if __name__ == "__main__":
 	else:
 		print "Error with scale"
 		sys.exit()
-		
+
 	funcNum = args_new.funcNum
 	for i in funcNum:   #Проверка на правильность ввода номеров Функционалов
 		try:
@@ -412,7 +484,8 @@ if __name__ == "__main__":
 		if errDelta == False:
 			if errLogScale == False:
 				if errRadii == False:
-					sys.exit(main(iFilePath, iFileType,  oFileFolder, oFileType, funcNum, int(delta), Scale, pathToConfigure, pathToAxis, radii))
+					
+					sys.exit(main(iFilePath, iFileType,  oFileFolder, oFileType, funcNum, int(delta), Scale, pathToConfigure, pathToAxis, radii, maxValAxis, notAddAxisPoints, addSrcPoint, addColorbar, addLegend, bg))
 				else:
 					print "Error with radius"
 			else:
